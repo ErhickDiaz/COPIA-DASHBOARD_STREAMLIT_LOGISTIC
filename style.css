@@ -1,0 +1,85 @@
+section[data-testid='stSidebar'] {
+    background-color: #1C306A; /* Color de fondo */
+    color: rgb(0, 0, 0); /* Color del texto general en la barra lateral */
+    flex-shrink: unset !important;
+}
+
+@media(hover:hover) and (min-width: 600px) and (max-width: 769px) {
+
+    header[data-testid="stHeader"] {
+        display:none;
+    }
+
+    section[data-testid='stSidebar'] {
+        height: 100%;
+        min-width:58px !important;
+        width: 58px !important;
+        margin-left: 305px;
+        position: relative;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        background-color: #1C306A;
+        overflow-x: hidden;
+        transition: 0.5s ease;
+        padding-top: 0px;
+        white-space: nowrap;
+    }
+
+    section[data-testid='stSidebar']:hover {
+        min-width: 330px !important;
+    }
+
+    button[kind="header"] {
+        display: none;
+    }
+
+    div[data-testid="collapsedControl"] {
+        display: none;
+    }
+
+    /* Cambiar color del texto en la barra lateral */
+    section[data-testid='stSidebar'] * {
+        color: rgb(0, 0, 0) !important; /* Asegura que todos los elementos sean blancos */
+    }
+}
+
+@media(hover: hover) and (min-width: 769px) {
+
+    header[data-testid="stHeader"] {
+        display:none;
+    }
+
+    section[data-testid='stSidebar'] {
+        height: 100%;
+        min-width:58px !important;
+        width: 58px !important;
+        transform:translateX(0px);
+        position: relative;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        background-color: #1C306A;
+        overflow-x: hidden;
+        transition: 0.5s ease;
+        padding-top: 0px;
+        white-space: nowrap;
+    }
+
+    section[data-testid='stSidebar']:hover {
+        min-width: 330px !important;
+    }
+
+    button[kind="header"] {
+        display: none;
+    }
+
+    div[data-testid="collapsedControl"] {
+        display: none;
+    }
+
+    /* Cambiar color del texto en la barra lateral */
+    section[data-testid='stSidebar'] * {
+        color: rgb(255, 255, 255) !important; /* Asegura que todos los elementos sean blancos */
+    }
+}
