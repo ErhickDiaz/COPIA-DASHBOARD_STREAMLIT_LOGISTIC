@@ -61,6 +61,9 @@ def main():
         flota_primaria_main()
     elif st.session_state.selection == "Monitoreo Flota Secundaria":
         flota_secundaria_main()
-        
+    
+        # Autorefresh cada 300 segundos (ajusta según lo necesites)
+    st_autorefresh(interval=300, key="data_refresh")
+
 if __name__ == "__main__":
     main()
