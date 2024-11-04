@@ -32,8 +32,11 @@ st.markdown(
 )
 
 
-def main():
+# Inicializar el estado de la sesión si no existe
+if 'selection' not in st.session_state:
+    st.session_state.selection = "Inicio"  # Valor predeterminado
 
+def main():
     st.sidebar.title("📑 Menú de Navegación")
 
     # Definir las opciones con íconos
@@ -44,23 +47,20 @@ def main():
         "Monitoreo Flota Secundaria": "🚛"
     }
 
-    # Variable para almacenar la selección
-    selection = None
-
     # Crear botones con íconos
     for option, icon in options.items():
         if st.sidebar.button(f"{icon} {option}"):
-            selection = option
+            st.session_state.selection = option  # Actualiza la selección en el estado de la sesión
 
     # Lógica de navegación
-    if selection == "Inicio":
+    if st.session_state.selection == "Inicio":
         inicio_main()
-    elif selection == "Monitoreo Pre Primaria":
+    elif st.session_state.selection == "Monitoreo Pre Primaria":
         pre_primaria_main()
-    elif selection == "Monitoreo Flota Primaria":
+    elif st.session_state.selection == "Monitoreo Flota Primaria":
         flota_primaria_main()
-    elif selection == "Monitoreo Flota Secundaria":
+    elif st.session_state.selection == "Monitoreo Flota Secundaria":
         flota_secundaria_main()
-
+        
 if __name__ == "__main__":
     main()
