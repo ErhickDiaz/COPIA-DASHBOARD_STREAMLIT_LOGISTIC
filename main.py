@@ -4,6 +4,7 @@ from Monitoreo_Pre_Primaria import main as pre_primaria_main
 from Monitoreo_Flota_Primaria import main as flota_primaria_main
 from Monitoreo_Flota_Secundaria import main as flota_secundaria_main
 from streamlit_autorefresh import st_autorefresh
+import time
 
 st.set_page_config(layout="wide")
 
