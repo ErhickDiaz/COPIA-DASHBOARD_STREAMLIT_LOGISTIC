@@ -48,8 +48,8 @@ def main():
 
     # Conéctate a la base de datos de Geotab usando tus credenciales
     username = st.secrets["username"]
-    password = st.secrets["Soporte.2024"]
-    password2 = st.secrets["Soporte.2028"]
+    password = st.secrets["password"]
+    password2 = st.secrets["password2"]
     database = st.secrets["database"]
     api_key = st.secrets["api_key"]
     mode = 'driving'  # Modo de transporte
