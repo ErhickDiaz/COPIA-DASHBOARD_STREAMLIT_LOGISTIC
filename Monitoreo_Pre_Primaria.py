@@ -45,9 +45,7 @@ def main():
     def actividad_sharepoint():
         
         username = st.secrets["username"]
-        print(username)
         password = st.secrets["password"]
-        print(password)
         sharepoint_url = "https://gbconnect.sharepoint.com"
         site_url = "/sites/Torredetransportacin"
 

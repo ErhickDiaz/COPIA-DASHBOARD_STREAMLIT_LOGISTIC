@@ -71,7 +71,7 @@ def main():
     }
 
     # Autenticación en Office 365 y conexión con SharePoint
-    authcookie = Office365(sharepoint_url, username=username, password=password2).GetCookies()
+    authcookie = Office365(sharepoint_url, username=username, password=password).GetCookies()
 
     # Conectar al sitio de SharePoint
     site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie)
@@ -89,7 +89,7 @@ def main():
     print(Programa_rutas)
 
     # Autenticación y creación de la conexión a la API de Geotab
-    api = mygeotab.API(username=username, password=password, database=database)
+    api = mygeotab.API(username=username, password=password2, database=database)
     api.authenticate()
 
     # Función para obtener las coordenadas de un vehículo y su nombre
