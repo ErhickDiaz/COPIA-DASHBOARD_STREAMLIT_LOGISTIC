@@ -52,7 +52,6 @@ def main():
     for option, icon in options.items():
         if st.sidebar.button(f"{icon} {option}"):
             st.session_state.selection = option  # Actualiza la selección en el estado de la sesión
-            st.experimental_rerun()  # Forzar recarga para aplicar selección
 
     # Usar st_autorefresh solo en la página actual seleccionada
     if st.session_state.selection == "Inicio":
