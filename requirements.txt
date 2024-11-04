@@ -8,4 +8,4 @@ SharePlum==0.5.1
 streamlit==1.37.1
 streamlit_autorefresh==1.0.1
 streamlit_echarts==0.4.0
-openpyxl==3.0.10
+openpyxl==3.1.5
