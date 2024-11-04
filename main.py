@@ -56,16 +56,16 @@ def main():
 
     # Usar st_autorefresh solo en la página actual seleccionada
     if st.session_state.selection == "Inicio":
-        st_autorefresh(interval=30, key="inicio_refresh")  # Actualiza cada 5 segundos
+        st.session_state.selection = "Inicio" 
         inicio_main()
     elif st.session_state.selection == "Monitoreo Pre Primaria":
-        st_autorefresh(interval=30, key="pre_primaria_refresh")
+        st.session_state.selection = "Monitoreo Pre Primaria" 
         pre_primaria_main()
     elif st.session_state.selection == "Monitoreo Flota Primaria":
-        st_autorefresh(interval=30, key="flota_primaria_refresh")
+        st.session_state.selection = "Monitoreo Flota Primaria" 
         flota_primaria_main()
     elif st.session_state.selection == "Monitoreo Flota Secundaria":
-        st_autorefresh(interval=30, key="flota_secundaria_refresh")
+        st.session_state.selection = "Monitoreo Flota Secundaria" 
         flota_secundaria_main()
 
 
