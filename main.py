@@ -60,8 +60,6 @@ def main():
     elif st.session_state.selection == "Monitoreo Pre Primaria":
         st.session_state.selection = "Monitoreo Pre Primaria" 
         pre_primaria_main()
-        st_autorefresh(interval=20, key="inicio_refresh")
-        
     elif st.session_state.selection == "Monitoreo Flota Primaria":
         st.session_state.selection = "Monitoreo Flota Primaria" 
         flota_primaria_main()
@@ -71,4 +69,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
+        time.sleep(30)
+   
