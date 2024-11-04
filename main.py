@@ -51,7 +51,7 @@ def main():
             st.session_state.selection = option  # Guardar la selección en session_state
 
     # Establecer la frecuencia de actualización solo en la página seleccionada
-    st_autorefresh(interval=10000, key="page_refresh")  # Intervalo en milisegundos (10 segundos)
+    st_autorefresh(interval=180000, key="page_refresh")  # Intervalo en milisegundos (3 minutos)
 
     # Lógica de navegación
     if st.session_state.selection == "Inicio":
