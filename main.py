@@ -32,7 +32,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
 # Inicializar el estado de la sesión si no existe
 if 'selection' not in st.session_state:
     st.session_state.selection = "Inicio"  # Valor predeterminado
@@ -54,19 +53,22 @@ def main():
         if st.sidebar.button(f"{icon} {option}"):
             st.session_state.selection = option  # Actualiza la selección en el estado de la sesión
 
-    # Usar st_autorefresh solo en la página actual seleccionada
-    if st.session_state.selection == "Inicio":
-        inicio_main()
-    elif st.session_state.selection == "Monitoreo Pre Primaria":
-        pre_primaria_main()
-    elif st.session_state.selection == "Monitoreo Flota Primaria":
-        flota_primaria_main()
-    elif st.session_state.selection == "Monitoreo Flota Secundaria":
-        flota_secundaria_main()
-
+    def selector():   
+        # Usar st_autorefresh solo en la página actual seleccionada
+        if st.session_state.selection == "Inicio":
+            inicio_main()
+        elif st.session_state.selection == "Monitoreo Pre Primaria":
+            pre_primaria_main()
+        elif st.session_state.selection == "Monitoreo Flota Primaria":
+            flota_primaria_main()
+        elif st.session_state.selection == "Monitoreo Flota Secundaria":
+            flota_secundaria_main()
+    
+    while True:
+        selector()
+        time.sleep(10)
 
 if __name__ == "__main__":
-    while True:
-        main()
-        time.sleep(10)
+    main()
+
    
