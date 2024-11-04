@@ -37,10 +37,8 @@ if 'selection' not in st.session_state:
     st.session_state.selection = "Inicio"  # Valor predeterminado
 
 def main():
-    
     st.sidebar.title("📑 Menú de Navegación")
 
-    # Definir las opciones con íconos
     options = {
         "Inicio": "🏠",
         "Monitoreo Pre Primaria": "📊",
@@ -48,25 +46,22 @@ def main():
         "Monitoreo Flota Secundaria": "🚛"
     }
 
-    # Crear botones con íconos
     for option, icon in options.items():
         if st.sidebar.button(f"{icon} {option}"):
-            st.session_state.selection = option  # Actualiza la selección en el estado de la sesión
+            st.session_state.selection = option  # Guardar la selección en session_state
 
-    def selector():   
-        # Usar st_autorefresh solo en la página actual seleccionada
-        if st.session_state.selection == "Inicio":
-            inicio_main()
-        elif st.session_state.selection == "Monitoreo Pre Primaria":
-            pre_primaria_main()
-        elif st.session_state.selection == "Monitoreo Flota Primaria":
-            flota_primaria_main()
-        elif st.session_state.selection == "Monitoreo Flota Secundaria":
-            flota_secundaria_main()
-    
-    while True:
-        selector()
-        time.sleep(10)
+    # Establecer la frecuencia de actualización solo en la página seleccionada
+    st_autorefresh(interval=10000, key="page_refresh")  # Intervalo en milisegundos (10 segundos)
+
+    # Lógica de navegación
+    if st.session_state.selection == "Inicio":
+        inicio_main()
+    elif st.session_state.selection == "Monitoreo Pre Primaria":
+        pre_primaria_main()
+    elif st.session_state.selection == "Monitoreo Flota Primaria":
+        flota_primaria_main()
+    elif st.session_state.selection == "Monitoreo Flota Secundaria":
+        flota_secundaria_main()
 
 if __name__ == "__main__":
     main()
