@@ -49,7 +49,7 @@ def main():
         username = "alejandro.salazar02@grupobimbo.com"
         password = "Soporte.1234567"
 
-        sharepoint_url = "https://gbconnect.sharepoint.com"
+        sharepoint_url = "https://gbconnect-my.sharepoint.com"
         site_url = "/sites/Torredetransportacin"
 
         # Autenticación en SharePoint
