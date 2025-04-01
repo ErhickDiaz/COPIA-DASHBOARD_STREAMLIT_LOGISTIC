@@ -1,9 +1,10 @@
 import streamlit as st
-from shareplum import Site,Office365
-#from shareplum import Office365
+from shareplum import Site
+from shareplum import Office365
+from shareplum import version
 import pandas as pd
 from io import StringIO
-from shareplum.site import Version
+#from shareplum.site import Version
 from datetime import datetime
 from streamlit_echarts import st_echarts
 import numpy as np
@@ -54,7 +55,7 @@ def main():
 
         # Autenticación en SharePoint
         authcookie = Office365(sharepoint_url, username=username, password=password).GetCookies()
-        site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie)
+        site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie, verify_ssl=False)
         folder_url2 = "Documentos Compartidos/Dashboard_Streamlit/Tractos_Transito_Pre_primaria"
         folder_url = "Documentos Compartidos/Dashboard_Streamlit/Saturacin_WMS"
 
