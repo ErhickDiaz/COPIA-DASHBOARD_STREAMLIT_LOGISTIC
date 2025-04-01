@@ -276,5 +276,7 @@ def main():
         #st.dataframe(df_T_Pre_Primaria)  # Mostrar el DataFrame centrado en la columna
         #st.write("</div>", unsafe_allow_html=True)  # Cierre del div
 
-    
+    file_name = f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv"
+    print(f"File name: {file_name}")
+    print(f"Server relative URL: {self.info['d']['ServerRelativeUrl']}")
     
