@@ -55,6 +55,12 @@ def main():
 
         # Autenticación en SharePoint
         authcookie = Office365(sharepoint_url, username=username, password=password).GetCookies()
+
+        # Verifica las variables antes de usarlas
+        print(f"sharepoint_url: {sharepoint_url}")
+        print(f"site_url: {site_url}")
+        print(f"authcookie: {authcookie}")
+
         site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie, verify_ssl=False)
         folder_url2 = "Documentos Compartidos/Dashboard_Streamlit/Tractos_Transito_Pre_primaria"
         folder_url = "Documentos Compartidos/Dashboard_Streamlit/Saturacin_WMS"
