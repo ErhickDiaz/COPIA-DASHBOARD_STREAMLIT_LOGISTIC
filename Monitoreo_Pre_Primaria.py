@@ -4,7 +4,7 @@ from shareplum import Office365
 from shareplum import version
 import pandas as pd
 from io import StringIO
-#from shareplum.site import Version
+from shareplum.site import Version
 from datetime import datetime
 from streamlit_echarts import st_echarts
 import numpy as np
