@@ -1,14 +1,15 @@
 import streamlit as st
-from shareplum import Site
-from shareplum import Office365
+from shareplum import Site, 
+Office365
+#from shareplum import Office365
 import pandas as pd
 from io import StringIO
 from shareplum.site import Version
 from datetime import datetime
-from streamlit_echarts import st_echarts
-import numpy as np
-import plotly.express as px
-from streamlit_autorefresh import st_autorefresh
+#from streamlit_echarts import st_echarts
+#import numpy as np
+#import plotly.express as px
+#from streamlit_autorefresh import st_autorefresh
 import base64
 
 def main():
