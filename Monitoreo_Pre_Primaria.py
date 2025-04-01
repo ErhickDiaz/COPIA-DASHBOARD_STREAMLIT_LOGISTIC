@@ -6,10 +6,10 @@ import pandas as pd
 from io import StringIO
 from shareplum.site import Version
 from datetime import datetime
-#from streamlit_echarts import st_echarts
-#import numpy as np
-#import plotly.express as px
-#from streamlit_autorefresh import st_autorefresh
+from streamlit_echarts import st_echarts
+import numpy as np
+import plotly.express as px
+from streamlit_autorefresh import st_autorefresh
 import base64
 
 def main():
