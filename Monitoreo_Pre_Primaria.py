@@ -71,6 +71,11 @@ def main():
 
         saturacion_csv = folder.get_file(f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv").decode("utf-8")
         T_Pre_Primaria_csv = folder2.get_file("Tractos_Transito_Pre_Primaria.csv").decode("utf-8")
+       
+        file_name = f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv"
+        print(f"File name: {file_name}")
+        print(f"Server relative URL: {self.info['d']['ServerRelativeUrl']}")
+    
         # Convertir el contenido del archivo a DataFrame de pandas
       
         df_satu = pd.read_csv(StringIO(saturacion_csv))
@@ -276,7 +281,4 @@ def main():
         #st.dataframe(df_T_Pre_Primaria)  # Mostrar el DataFrame centrado en la columna
         #st.write("</div>", unsafe_allow_html=True)  # Cierre del div
 
-    file_name = f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv"
-    print(f"File name: {file_name}")
-    print(f"Server relative URL: {self.info['d']['ServerRelativeUrl']}")
     
