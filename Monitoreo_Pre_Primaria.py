@@ -46,7 +46,7 @@ def main():
         
         #username = st.secrets["username"]
         #password = st.secrets["password"]
-        username = "alejandro.salazar01@grupobimbo.com"
+        username = "alejandro.salazar02@grupobimbo.com"
         password = "Soporte.1234567"
 
         sharepoint_url = "https://gbconnect.sharepoint.com"
