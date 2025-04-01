@@ -61,7 +61,7 @@ def main():
         print(f"site_url: {site_url}")
         print(f"authcookie: {authcookie}")
 
-        site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie, verify_ssl=False)
+        site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie)
         folder_url2 = "Documentos Compartidos/Dashboard_Streamlit/Tractos_Transito_Pre_primaria"
         folder_url = "Documentos Compartidos/Dashboard_Streamlit/Saturacin_WMS"
 
