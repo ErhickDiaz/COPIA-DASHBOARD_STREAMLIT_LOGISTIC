@@ -52,6 +52,17 @@ def main():
 
     # Establecer la frecuencia de actualización solo en la página seleccionada
     st_autorefresh(interval=180000, key="page_refresh")  # Intervalo en milisegundos (3 minutos)
+    
+    # ✅ NUEVO: Mostrar la hora de última actualización
+    ahora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    st.markdown(
+        f"""
+        <div style='text-align: right; font-size: 16px; margin-top: -10px; margin-bottom: 20px; color: #555;'>
+            Última actualización: <b>{ahora}</b>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     # Lógica de navegación
     if st.session_state.selection == "Inicio":
