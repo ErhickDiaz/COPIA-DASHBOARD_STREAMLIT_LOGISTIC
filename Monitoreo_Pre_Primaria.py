@@ -74,7 +74,7 @@ def main():
        
         file_name = f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv"
         print(f"File name: {file_name}")
-        print(f"Server relative URL: {self.info['d']['ServerRelativeUrl']}")
+        print(f"Server relative URL (estimado): {folder_url}")
     
         # Convertir el contenido del archivo a DataFrame de pandas
       
