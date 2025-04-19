@@ -252,8 +252,9 @@ def main():
             fig_daily.add_hline(y=80, line_dash="dash", line_color="#FFA500", line_width=2)
 
 
-            # Asegurarte que la columna de fecha esté en formato datetime
-            df_T_Pre_Primaria['fecha'] = pd.to_datetime(df_T_Pre_Primaria['fecha'])
+            # Suponiendo que la columna correcta se llama "Fecha" o algo similar
+            columna_fecha = [col for col in df_T_Pre_Primaria.columns if 'fecha' in col.lower()][0]
+            df_T_Pre_Primaria[columna_fecha] = pd.to_datetime(df_T_Pre_Primaria[columna_fecha])
 
             # Definir zona horaria local (ajusta si estás en otro país)
             zona_local = pytz.timezone('America/Santiago')
