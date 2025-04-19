@@ -252,22 +252,6 @@ def main():
             fig_daily.add_hline(y=80, line_dash="dash", line_color="#FFA500", line_width=2)
 
 
-            # Suponiendo que la columna correcta se llama "Fecha" o algo similar
-            columna_fecha = [col for col in df_T_Pre_Primaria.columns if 'fecha' in col.lower()][0]
-            df_T_Pre_Primaria[columna_fecha] = pd.to_datetime(df_T_Pre_Primaria[columna_fecha])
-
-            # Definir zona horaria local (ajusta si estás en otro país)
-            zona_local = pytz.timezone('America/Santiago')
-
-            # Obtener la fecha más reciente de la columna 'fecha' y convertir a hora local
-            fecha_utc = df_T_Pre_Primaria['fecha'].max()
-            fecha_local = fecha_utc.tz_localize('UTC').astimezone(zona_local)
-
-            # Mostrar en la parte superior del dashboard
-            st.markdown(
-            f"🕒 **Última actualización del gráfico:** {fecha_local.strftime('%Y-%m-%d %H:%M:%S')}"
-            )
-
             # Mostrar gráfico en Streamlit
             st.plotly_chart(fig_daily)
 
