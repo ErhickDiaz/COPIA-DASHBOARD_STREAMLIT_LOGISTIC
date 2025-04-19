@@ -10,6 +10,7 @@ from streamlit_echarts import st_echarts
 import numpy as np
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
+import pytz
 import base64
 
 def main():
@@ -69,7 +70,13 @@ def main():
         folder = site.Folder(folder_url)
         folder2 = site.Folder(folder_url2)
 
-        saturacion_csv = folder.get_file(f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv").decode("utf-8")
+        # Usa tu zona horaria local (ajústalo si no es Santiago)
+        tz = pytz.timezone("America/Santiago")
+        fecha_local = datetime.now(tz).strftime('%Y_%m_%d')
+
+        saturacion_csv = folder.get_file(f"historico_saturaciones_{fecha_local}.csv").decode("utf-8")
+        
+        #saturacion_csv = folder.get_file(f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv").decode("utf-8")
         T_Pre_Primaria_csv = folder2.get_file("Tractos_Transito_Pre_Primaria.csv").decode("utf-8")
        
         file_name = f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv"
