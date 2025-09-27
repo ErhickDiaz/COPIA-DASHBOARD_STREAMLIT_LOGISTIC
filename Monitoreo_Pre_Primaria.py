@@ -14,7 +14,7 @@ import base64
 # -----------------------------
 # FUNCIONES PARA GITHUB
 # -----------------------------
-#GITHUB_TOKEN = "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"
+GITHUB_TOKEN = "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"
 REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
 GITHUB_FOLDER = "data"
 GITHUB_BRANCH = "main"
@@ -74,9 +74,9 @@ def main():
         df_satu = leer_csv_github(saturacion_file)
         df_T_Pre_Primaria = leer_csv_github(tractos_file)
 
-    # Calcular saturación
-    if not df_satu.empty:
-        saturacion = df_satu['Saturación'].iloc[-1]
+        # Calcular saturación
+        if not df_satu.empty:
+            saturacion = df_satu['Saturación'].iloc[-1]
     else:
         saturacion = 0
 
