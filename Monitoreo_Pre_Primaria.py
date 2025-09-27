@@ -83,25 +83,25 @@ def main():
         fecha_local = datetime.now().strftime('%Y_%m_%d')
         saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
         tractos_file = "Tractos_Transito_Pre_Primaria.csv"
-
+    
         # Leer archivos desde GitHub
         df_satu = leer_csv_github(saturacion_file)
         df_T_Pre_Primaria = leer_csv_github(tractos_file)
+    
+        # Calcular saturación
+        if not df_satu.empty:
+            saturacion = df_satu['Saturación'].iloc[-1]
+            n_pallets = df_satu["N° de pallets"].iloc[-1]
+        else:
+            saturacion = 0
+            n_pallets = 0
+    
+        # **Muy importante**: devolver todas las variables que vas a usar
+        return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
 
-    # Calcular saturación
-    if not df_satu.empty:
-        saturacion = df_satu['Saturación'].iloc[-1]
-    else:
-        saturacion = 0
 
-    return df_satu, saturacion, df_T_Pre_Primaria
-
-    df_satu, saturacion, df_T_Pre_Primaria = actividad_github()
-    if not df_satu.empty:
-        n_pallets = df_satu["N° de pallets"].iloc[-1]
-    else:
-        n_pallets = 0
-
+    
+    
        
 
     # Configurar las opciones del gráfico de ECharts
