@@ -70,8 +70,9 @@ def main():
     sidebar_img_base64 = cargar_imagen_github("OsitoTierno.png")
     if sidebar_img_base64:
         st.sidebar.image(f"data:image/png;base64,{sidebar_img_base64}", use_column_width=True)
-
-    # Reemplazar carga del logo
+    else:
+        st.sidebar.write("Imagen lateral no disponible")
+    
     logo_base64 = cargar_imagen_github("IDEAL.jfif")
     if logo_base64:
         st.markdown(f"""
@@ -80,6 +81,9 @@ def main():
                 <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
             </div>
         """, unsafe_allow_html=True)
+    else:
+        
+    st.markdown("<h1>Logística: Monitoreo transportación pre - primaria.</h1>", unsafe_allow_html=True)
         
     st.markdown(f"""
             <div style="display: flex; align-items: center;">
