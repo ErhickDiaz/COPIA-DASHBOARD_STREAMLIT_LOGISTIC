@@ -1,36 +1,18 @@
 import streamlit as st
+from shareplum import Site
+from shareplum import Office365
+from shareplum import version
 import pandas as pd
+from io import StringIO
+from shareplum.site import Version
 from datetime import datetime
 from streamlit_echarts import st_echarts
 import numpy as np
 import plotly.express as px
-from github import Github
-from io import StringIO
 from streamlit_autorefresh import st_autorefresh
 import pytz
 import base64
 
-# -----------------------------
-# FUNCIONES PARA GITHUB
-# -----------------------------
-GITHUB_TOKEN = "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"
-REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
-GITHUB_FOLDER = "data"
-GITHUB_BRANCH = "main"
-
-def leer_csv_github(nombre_archivo):
-    """Lee un CSV desde GitHub y devuelve un DataFrame."""
-    try:
-        repo = Github(login_or_token=GITHUB_TOKEN).get_repo(REPO_NAME)
-        ruta_remota = f"{GITHUB_FOLDER}/{nombre_archivo}"
-        archivo = repo.get_contents(ruta_remota, ref=GITHUB_BRANCH)
-        contenido = archivo.decoded_content.decode("utf-8")
-        df = pd.read_csv(StringIO(contenido))
-        return df
-    except Exception as e:
-        st.error(f"No se pudo leer {nombre_archivo} desde GitHub: {e}")
-        return pd.DataFrame()
-        
 def main():
     
     # Cargar y codificar la imagen
@@ -48,52 +30,71 @@ def main():
     load_css('style.css')
 
     # Cargar y mostrar la imagen en la barra lateral
-    #st.sidebar.image("OsitoTierno.png", use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
+    st.sidebar.image("OsitoTierno.png", use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
 
      # Ruta del logo
-    #logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
+    logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
     # Obtener la imagen codificada
-    #logo_base64 = load_image(logo)
-    # -----------------------------
-    # Imágenes locales
-    # -----------------------------
+    logo_base64 = load_image(logo)
 
-    # Sidebar
-    try:
-        st.sidebar.image("OsitoTierno.png", use_column_width=True)
-    except FileNotFoundError:
-        st.sidebar.write("Imagen lateral no disponible")
-    
-    # Logo principal
-    try:
-        st.markdown(f"""
+    st.markdown(f"""
             <div style="display: flex; align-items: center;">
-                <img src="IDEAL.jfif" alt="Logo" style="width: 240px; margin-right: 10px;">
+                <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
                 <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
             </div>
         """, unsafe_allow_html=True)
-    except FileNotFoundError:
-        st.markdown("<h1>Logística: Monitoreo transportación pre - primaria.</h1>", unsafe_allow_html=True)
-
-
-    def actividad_github():
-        """Reemplaza actividad_sharepoint() usando GitHub."""
-        # Archivos que generan tus scripts
-        fecha_local = datetime.now().strftime('%Y_%m_%d')
-        saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
-        tractos_file = "Tractos_Transito_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     
-        # Leer archivos desde GitHub
-        df_satu = leer_csv_github(saturacion_file)
-        saturacion = df_satu.iloc[-1]['Saturación']
-        df_T_Pre_Primaria = leer_csv_github(tractos_file)
-        n_pallets = df_satu["N° de pallets"].iloc[-1]
-       
-    
-        return df_satu, saturacion, df_T_Pre_Primaria  
-    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
+    def actividad_sharepoint():
+        
+        #username = st.secrets["username"]
+        #password = st.secrets["password"]
+        username = "erick.diaz@grupobimbo.com"
+        password = "Riquelme.2025ER"
 
+        sharepoint_url = "https://gbconnect.sharepoint.com"
+        site_url = "/sites/Torredetransportacin"
+
+        # Autenticación en SharePoint
+        authcookie = Office365(sharepoint_url, username=username, password=password).GetCookies()
+
+        # Verifica las variables antes de usarlas
+        print(f"sharepoint_url: {sharepoint_url}")
+        print(f"site_url: {site_url}")
+        print(f"authcookie: {authcookie}")
+
+        site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie)
+        folder_url2 = "Documentos Compartidos/Dashboard_Streamlit/Tractos_Transito_Pre_primaria"
+        folder_url = "Documentos Compartidos/Dashboard_Streamlit/Saturacin_WMS"
+
+        # Acceder a la carpeta de SharePoint
+        folder = site.Folder(folder_url)
+        folder2 = site.Folder(folder_url2)
+
+        # Usa tu zona horaria local (ajústalo si no es Santiago)
+        tz = pytz.timezone("America/Santiago")
+        fecha_local = datetime.now(tz).strftime('%Y_%m_%d')
+
+        saturacion_csv = folder.get_file(f"historico_saturaciones_{fecha_local}.csv").decode("utf-8")
+        
+        #saturacion_csv = folder.get_file(f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv").decode("utf-8")
+        T_Pre_Primaria_csv = folder2.get_file("Tractos_Transito_Pre_Primaria.csv").decode("utf-8")
        
+        file_name = f"historico_saturaciones_{datetime.now().strftime('%Y_%m_%d')}.csv"
+        print(f"File name: {file_name}")
+        print(f"Server relative URL (estimado): {folder_url}")
+    
+        # Convertir el contenido del archivo a DataFrame de pandas
+      
+        df_satu = pd.read_csv(StringIO(saturacion_csv))
+
+        Saturación = df_satu.iloc[-1]['Saturación']
+
+        df_T_Pre_Primaria = pd.read_csv(StringIO(T_Pre_Primaria_csv))
+    
+        return df_satu, Saturación, df_T_Pre_Primaria 
+
+    df_satu, saturacion, df_T_Pre_Primaria = actividad_sharepoint()
+    n_pallets = df_satu["N° de pallets"].iloc[-1]
 
     # Configurar las opciones del gráfico de ECharts
     def get_gauge_options(saturacion, n_pallets):
@@ -158,7 +159,7 @@ def main():
     # Dividir la página en tres columnas con un ancho personalizado
     col1, col2, col3= st.columns([1, 2, 2])
 
-    # Renderizar el gráfico ECharts en la primera columna
+        # Renderizar el gráfico ECharts en la primera columna
     with col1:
         st_echarts(get_gauge_options(saturacion, n_pallets), height=400)
 
