@@ -88,17 +88,11 @@ def main():
         df_satu = leer_csv_github(saturacion_file)
         df_T_Pre_Primaria = leer_csv_github(tractos_file)
     
-        # Calcular saturación
-        if not df_satu.empty:
-            saturacion = df_satu['Saturación'].iloc[-1]
-            n_pallets = df_satu["N° de pallets"].iloc[-1]
-        else:
-            saturacion = 0
-            n_pallets = 0
-    
        
-    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
     
+     return df_satu, Saturación, df_T_Pre_Primaria  
+    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
+    n_pallets = df_satu["N° de pallets"].iloc[-1]
        
 
     # Configurar las opciones del gráfico de ECharts
