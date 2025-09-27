@@ -74,19 +74,19 @@ def main():
         df_satu = leer_csv_github(saturacion_file)
         df_T_Pre_Primaria = leer_csv_github(tractos_file)
 
-        # Calcular saturación
-        if not df_satu.empty:
-            saturacion = df_satu['Saturación'].iloc[-1]
-        else:
-            saturacion = 0
+    # Calcular saturación
+    if not df_satu.empty:
+        saturacion = df_satu['Saturación'].iloc[-1]
+    else:
+        saturacion = 0
 
-        return df_satu, saturacion, df_T_Pre_Primaria
+    return df_satu, saturacion, df_T_Pre_Primaria
 
-        df_satu, saturacion, df_T_Pre_Primaria = actividad_github()
-        if not df_satu.empty:
-            n_pallets = df_satu["N° de pallets"].iloc[-1]
-        else:
-            n_pallets = 0
+    df_satu, saturacion, df_T_Pre_Primaria = actividad_github()
+    if not df_satu.empty:
+        n_pallets = df_satu["N° de pallets"].iloc[-1]
+    else:
+        n_pallets = 0
 
        
 
