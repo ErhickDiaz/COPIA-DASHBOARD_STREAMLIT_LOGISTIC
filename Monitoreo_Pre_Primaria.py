@@ -96,10 +96,7 @@ def main():
             saturacion = 0
             n_pallets = 0
     
-        # **Muy importante**: devolver todas las variables que vas a usar
-        return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
-
-
+       
     df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
     
        
