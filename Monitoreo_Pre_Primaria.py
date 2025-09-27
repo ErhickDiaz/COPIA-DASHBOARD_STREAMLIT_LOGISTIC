@@ -55,42 +55,34 @@ def main():
     #logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
     # Obtener la imagen codificada
     #logo_base64 = load_image(logo)
-    def cargar_imagen_github(ruta_archivo):
-        """Carga una imagen desde GitHub y devuelve el contenido en base64"""
+    def cargar_imagen_github(nombre_archivo):
         try:
             repo = Github(GITHUB_TOKEN).get_repo(REPO_NAME)
-            archivo = repo.get_contents(ruta_archivo, ref=GITHUB_BRANCH)
+            archivo = repo.get_contents(f"{GITHUB_FOLDER}/{nombre_archivo}", ref=GITHUB_BRANCH)
             contenido = archivo.decoded_content
             return base64.b64encode(contenido).decode()
         except Exception as e:
-            st.error(f"No se pudo cargar la imagen {ruta_archivo} desde GitHub: {e}")
+            st.warning(f"No se pudo cargar la imagen {nombre_archivo} desde GitHub: {e}")
             return None
 
-    # Reemplazar st.sidebar.image
-sidebar_img_base64 = cargar_imagen_github("OsitoTierno.png")
-if sidebar_img_base64:
-    st.sidebar.image(f"data:image/png;base64,{sidebar_img_base64}", use_column_width=True)
-else:
-    st.sidebar.write("Imagen lateral no disponible")
-    
-logo_base64 = cargar_imagen_github("IDEAL.jfif")
-if logo_base64:
-    st.markdown(f"""
-        <div style="display: flex; align-items: center;">
-            <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
-            <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
-        </div>
-    """, unsafe_allow_html=True)
-else:
-        
-    st.markdown("<h1>Logística: Monitoreo transportación pre - primaria.</h1>", unsafe_allow_html=True)
-        
-    st.markdown(f"""
+    # --- Sidebar ---
+    sidebar_img_base64 = cargar_imagen_github("OsitoTierno.png")
+    if sidebar_img_base64:
+        st.sidebar.image(f"data:image/png;base64,{sidebar_img_base64}", use_column_width=True)
+    else:
+        st.sidebar.write("Imagen lateral no disponible")
+
+    # --- Logo principal ---
+    logo_base64 = cargar_imagen_github("IDEAL.jfif")
+    if logo_base64:
+        st.markdown(f"""
             <div style="display: flex; align-items: center;">
                 <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
                 <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
             </div>
         """, unsafe_allow_html=True)
+    else:
+        st.markdown("<h1>Logística: Monitoreo transportación pre - primaria.</h1>", unsafe_allow_html=True)
     
     def actividad_github():
         """Reemplaza actividad_sharepoint() usando GitHub."""
