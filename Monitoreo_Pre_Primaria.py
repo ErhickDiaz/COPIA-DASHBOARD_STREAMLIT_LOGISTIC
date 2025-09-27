@@ -9,6 +9,15 @@ from streamlit_autorefresh import st_autorefresh
 import pytz
 import base64
 
+    # -----------------------------
+    # FUNCIONES PARA GITHUB
+    # -----------------------------
+    GITHUB_TOKEN = "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"
+    REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
+    GITHUB_FOLDER = "data"
+    GITHUB_BRANCH = "main"
+
+
 def main():
     
     # Cargar y codificar la imagen
