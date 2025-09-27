@@ -85,12 +85,12 @@ def main():
     
         # Leer archivos desde GitHub
         df_satu = leer_csv_github(saturacion_file)
-        Saturación = df_satu.iloc[-1]['Saturación']
+        saturacion = df_satu.iloc[-1]['Saturación']
         df_T_Pre_Primaria = leer_csv_github(tractos_file)
         n_pallets = df_satu["N° de pallets"].iloc[-1]
        
     
-    return df_satu, Saturación, df_T_Pre_Primaria  
+    return df_satu, saturacion, df_T_Pre_Primaria  
     df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
 
        
