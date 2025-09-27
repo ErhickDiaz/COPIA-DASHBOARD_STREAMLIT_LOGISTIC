@@ -100,7 +100,7 @@ def main():
         return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
 
 
-    
+    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
     
        
 
