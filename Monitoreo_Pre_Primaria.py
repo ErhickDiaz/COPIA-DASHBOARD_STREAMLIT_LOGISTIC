@@ -77,10 +77,11 @@ def main():
         # Calcular saturación
         if not df_satu.empty:
             saturacion = df_satu['Saturación'].iloc[-1]
-    else:
+        else:
         saturacion = 0
 
-    return df_satu, saturacion, df_T_Pre_Primaria
+        return df_satu, saturacion, df_T_Pre_Primaria
+        n_pallets = df_satu["N° de pallets"].iloc[-1]
 
     # Configurar las opciones del gráfico de ECharts
     def get_gauge_options(saturacion, n_pallets):
