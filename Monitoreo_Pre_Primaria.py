@@ -65,15 +65,15 @@ def main():
         """, unsafe_allow_html=True)
     
     def actividad_github():
-    """Reemplaza actividad_sharepoint() usando GitHub."""
-    # Archivos que generan tus scripts
-    fecha_local = datetime.now().strftime('%Y_%m_%d')
-    saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
-    tractos_file = "Tractos_Transito_Pre_Primaria.csv"
+        """Reemplaza actividad_sharepoint() usando GitHub."""
+        # Archivos que generan tus scripts
+        fecha_local = datetime.now().strftime('%Y_%m_%d')
+        saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
+        tractos_file = "Tractos_Transito_Pre_Primaria.csv"
 
-    # Leer archivos desde GitHub
-    df_satu = leer_csv_github(saturacion_file)
-    df_T_Pre_Primaria = leer_csv_github(tractos_file)
+        # Leer archivos desde GitHub
+        df_satu = leer_csv_github(saturacion_file)
+        df_T_Pre_Primaria = leer_csv_github(tractos_file)
 
     # Calcular saturación
     if not df_satu.empty:
