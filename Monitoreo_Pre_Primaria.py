@@ -5,7 +5,7 @@ from datetime import datetime
 from streamlit_echarts import st_echarts
 import numpy as np
 import plotly.express as px
-from github import Github, Auth
+from github import Github
 from io import StringIO
 from streamlit_autorefresh import st_autorefresh
 import pytz
@@ -22,8 +22,7 @@ GITHUB_BRANCH = "main"
 def leer_csv_github(nombre_archivo):
     """Lee un CSV desde GitHub y devuelve un DataFrame."""
     try:
-        auth = Auth.Token(GITHUB_TOKEN)
-        repo = Github(auth=auth).get_repo(REPO_NAME)
+        repo = Github(login_or_token=GITHUB_TOKEN).get_repo(REPO_NAME)
         ruta_remota = f"{GITHUB_FOLDER}/{nombre_archivo}"
         archivo = repo.get_contents(ruta_remota, ref=GITHUB_BRANCH)
         contenido = archivo.decoded_content.decode("utf-8")
