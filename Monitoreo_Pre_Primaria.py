@@ -46,6 +46,17 @@ def main():
                 <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
             </div>
         """, unsafe_allow_html=True)
+
+    def actividad_github():
+        g = Github(GITHUB_TOKEN)
+        repo = g.get_repo(REPO_NAME)
+
+        tz = pytz.timezone("America/Santiago")
+        fecha_local = datetime.now(tz).strftime('%Y_%m_%d')
+        saturacion_filename = f"{GITHUB_FOLDER}/historico_saturaciones_{fecha_local}.csv"
+
+
+
     
     
     # Configurar las opciones del gráfico de ECharts
@@ -111,7 +122,7 @@ def main():
     # Dividir la página en tres columnas con un ancho personalizado
     col1, col2, col3= st.columns([1, 2, 2])
 
-        # Renderizar el gráfico ECharts en la primera columna
+    # Renderizar el gráfico ECharts en la primera columna
     with col1:
         st_echarts(get_gauge_options(saturacion, n_pallets), height=400)
 
