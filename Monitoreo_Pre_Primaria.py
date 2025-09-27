@@ -91,7 +91,7 @@ def main():
        
     
     return df_satu, Saturación, df_T_Pre_Primaria  
-df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
+    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
 
        
 
@@ -158,7 +158,7 @@ df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
     # Dividir la página en tres columnas con un ancho personalizado
     col1, col2, col3= st.columns([1, 2, 2])
 
-        # Renderizar el gráfico ECharts en la primera columna
+    # Renderizar el gráfico ECharts en la primera columna
     with col1:
         st_echarts(get_gauge_options(saturacion, n_pallets), height=400)
 
