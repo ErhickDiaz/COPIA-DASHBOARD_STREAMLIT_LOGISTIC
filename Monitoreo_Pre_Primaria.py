@@ -67,21 +67,21 @@ def main():
             return None
 
     # Reemplazar st.sidebar.image
-    sidebar_img_base64 = cargar_imagen_github("OsitoTierno.png")
-    if sidebar_img_base64:
-        st.sidebar.image(f"data:image/png;base64,{sidebar_img_base64}", use_column_width=True)
-    else:
-        st.sidebar.write("Imagen lateral no disponible")
+sidebar_img_base64 = cargar_imagen_github("OsitoTierno.png")
+if sidebar_img_base64:
+    st.sidebar.image(f"data:image/png;base64,{sidebar_img_base64}", use_column_width=True)
+else:
+    st.sidebar.write("Imagen lateral no disponible")
     
-    logo_base64 = cargar_imagen_github("IDEAL.jfif")
-    if logo_base64:
-        st.markdown(f"""
-            <div style="display: flex; align-items: center;">
-                <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
-                <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
+logo_base64 = cargar_imagen_github("IDEAL.jfif")
+if logo_base64:
+    st.markdown(f"""
+        <div style="display: flex; align-items: center;">
+            <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
+            <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
+        </div>
+    """, unsafe_allow_html=True)
+else:
         
     st.markdown("<h1>Logística: Monitoreo transportación pre - primaria.</h1>", unsafe_allow_html=True)
         
