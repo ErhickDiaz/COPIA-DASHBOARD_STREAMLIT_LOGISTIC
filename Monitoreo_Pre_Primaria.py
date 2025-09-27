@@ -83,7 +83,10 @@ def main():
         return df_satu, saturacion, df_T_Pre_Primaria
 
         df_satu, saturacion, df_T_Pre_Primaria = actividad_github()
-        n_pallets = df_satu["N° de pallets"].iloc[-1]
+        if not df_satu.empty:
+            n_pallets = df_satu["N° de pallets"].iloc[-1]
+        else:
+            n_pallets = 0
 
        
 
