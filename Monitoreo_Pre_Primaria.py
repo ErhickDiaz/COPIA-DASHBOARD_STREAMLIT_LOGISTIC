@@ -90,7 +90,7 @@ def main():
         n_pallets = df_satu["N° de pallets"].iloc[-1]
        
     
-    return df_satu, saturacion, df_T_Pre_Primaria  
+        return df_satu, saturacion, df_T_Pre_Primaria  
     df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
 
        
