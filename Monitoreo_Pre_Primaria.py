@@ -49,13 +49,38 @@ def main():
     load_css('style.css')
 
     # Cargar y mostrar la imagen en la barra lateral
-    st.sidebar.image("OsitoTierno.png", use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
+    #st.sidebar.image("OsitoTierno.png", use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
 
      # Ruta del logo
-    logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
+    #logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
     # Obtener la imagen codificada
-    logo_base64 = load_image(logo)
+    #logo_base64 = load_image(logo)
+    def cargar_imagen_github(ruta_archivo):
+        """Carga una imagen desde GitHub y devuelve el contenido en base64"""
+        try:
+            repo = Github(GITHUB_TOKEN).get_repo(REPO_NAME)
+            archivo = repo.get_contents(ruta_archivo, ref=GITHUB_BRANCH)
+            contenido = archivo.decoded_content
+            return base64.b64encode(contenido).decode()
+        except Exception as e:
+            st.error(f"No se pudo cargar la imagen {ruta_archivo} desde GitHub: {e}")
+            return None
 
+    # Reemplazar st.sidebar.image
+    sidebar_img_base64 = cargar_imagen_github("OsitoTierno.png")
+    if sidebar_img_base64:
+        st.sidebar.image(f"data:image/png;base64,{sidebar_img_base64}", use_column_width=True)
+
+    # Reemplazar carga del logo
+    logo_base64 = cargar_imagen_github("IDEAL.jfif")
+    if logo_base64:
+        st.markdown(f"""
+            <div style="display: flex; align-items: center;">
+                <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
+                <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación pre - primaria.</h1>
+            </div>
+        """, unsafe_allow_html=True)
+        
     st.markdown(f"""
             <div style="display: flex; align-items: center;">
                 <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
