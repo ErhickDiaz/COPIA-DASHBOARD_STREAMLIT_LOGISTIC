@@ -69,37 +69,35 @@ def main():
 
         
     def actividad_github():
-        g = Github(GITHUB_TOKEN)
+        g = Github(st.secrets["GITHUB_TOKEN"])
         repo = g.get_repo(REPO_NAME)
-    
+        
         fecha_local = datetime.now().strftime('%Y_%m_%d')
         saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
         tractos_file = "Tractos_Transito_Pre_primaria.csv"
 
+    # Definimos la función aquí, dentro del scope de actividad_github
     def leer_csv_github(filepath):
         try:
             file_content = repo.get_contents(f"{GITHUB_FOLDER}/{filepath}")
             csv_string = file_content.decoded_content.decode("utf-8")
-            df = pd.read_csv(StringIO(csv_string))
-            return df
+            return pd.read_csv(StringIO(csv_string))
         except Exception as e:
             st.warning(f"No se pudo cargar {filepath} desde GitHub: {e}")
-            return pd.DataFrame()  # Devuelve vacío si falla
+            return pd.DataFrame()  # devuelve un DataFrame vacío en caso de error
 
     df_satu = leer_csv_github(saturacion_file)
     df_T_Pre_Primaria = leer_csv_github(tractos_file)
 
-    # Evitar valores 0
     if not df_satu.empty:
-        saturacion = df_satu['Saturación'].iloc[-1]
-        n_pallets = df_satu['N° de pallets'].iloc[-1]
-        if saturacion == 0: saturacion = None
-        if n_pallets == 0: n_pallets = None
+        saturacion = df_satu['Saturación'].iloc[-1] or None
+        n_pallets = df_satu['N° de pallets'].iloc[-1] or None
     else:
         saturacion = None
         n_pallets = None
 
     return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
+    
     df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
     
     # Configurar las opciones del gráfico de ECharts
