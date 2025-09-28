@@ -96,7 +96,7 @@ def main():
     
         return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
 
-    
+    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
     
     # Configurar las opciones del gráfico de ECharts
     def get_gauge_options(saturacion, n_pallets):
