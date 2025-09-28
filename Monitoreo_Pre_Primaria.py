@@ -52,10 +52,20 @@ def main():
         repo = g.get_repo(REPO_NAME)
 
         tz = pytz.timezone("America/Santiago")
-        fecha_local = datetime.now(tz).strftime('%Y_%m_%d')
-        saturacion_filename = f"{GITHUB_FOLDER}/historico_saturaciones_{fecha_local}.csv"
-
-
+  
+        fecha_local = datetime.now().strftime('%Y_%m_%d')
+        saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
+        tractos_file = "Tractos_Transito_Pre_primaria.csv"
+    
+        # Leer archivos desde GitHub
+        df_satu = leer_csv_github(saturacion_file)
+        saturacion = df_satu.iloc[-1]['Saturación']
+        df_T_Pre_Primaria = leer_csv_github(tractos_file)
+        n_pallets = df_satu["N° de pallets"].iloc[-1]
+       
+    
+        return df_satu, saturacion, df_T_Pre_Primaria  
+    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
 
     
     
