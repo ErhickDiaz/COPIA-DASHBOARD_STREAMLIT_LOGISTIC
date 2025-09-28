@@ -14,7 +14,8 @@ import base64
 
 # FUNCIONES PARA GITHUB
 # -----------------------------
-GITHUB_TOKEN = "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"
+
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
 GITHUB_FOLDER = "data"
 
