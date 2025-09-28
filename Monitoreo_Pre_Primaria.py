@@ -80,24 +80,21 @@ def main():
             return None  # Devuelve None si falla
         
     def actividad_github():
-        g = Github(GITHUB_TOKEN)
-        repo = g.get_repo(REPO_NAME)
-
-        tz = pytz.timezone("America/Santiago")
-  
         fecha_local = datetime.now().strftime('%Y_%m_%d')
         saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
         tractos_file = "Tractos_Transito_Pre_primaria.csv"
     
-        # Leer archivos desde GitHub
         df_satu = leer_csv_github(saturacion_file)
-        saturacion = df_satu.iloc[-1]['Saturación']
         df_T_Pre_Primaria = leer_csv_github(tractos_file)
-        n_pallets = df_satu["N° de pallets"].iloc[-1]
-       
     
-        return df_satu, saturacion, df_T_Pre_Primaria  
-    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
+        if not df_satu.empty:
+            saturacion = df_satu.iloc[-1]['Saturación']
+            n_pallets = df_satu["N° de pallets"].iloc[-1]
+        else:
+            saturacion = 0
+            n_pallets = 0
+    
+        return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
 
     
     
