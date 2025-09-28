@@ -4,6 +4,7 @@ import os
 from github import Github
 from io import StringIO
 from datetime import datetime
+from PIL import Image, UnidentifiedImageError
 from streamlit_echarts import st_echarts
 import numpy as np
 import plotly.express as px
@@ -34,8 +35,25 @@ def main():
     load_css('style.css')
 
     # Cargar y mostrar la imagen en la barra lateral
-    st.sidebar.image(os.path.join(os.getcwd(), "OsitoTierno.png"), use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
+    #st.sidebar.image(os.path.join(os.getcwd(), "OsitoTierno.png"), use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
+    def load_sidebar_image(image_filename):
+        # Obtener la ruta absoluta relativa al archivo actual
+        base_dir = os.path.dirname(__file__)
+        img_path = os.path.join(base_dir, image_filename)
+        
+        if os.path.exists(img_path):
+            try:
+                img = Image.open(img_path)
+                st.sidebar.image(img, use_column_width=True)
+            except UnidentifiedImageError:
+                st.sidebar.warning(f"Archivo encontrado pero no es una imagen válida: {image_filename}")
+            except Exception as e:
+                st.sidebar.error(f"Error inesperado al abrir la imagen: {e}")
+        else:
+            st.sidebar.warning(f"No se encontró la imagen: {image_filename}")
 
+    # Uso
+    load_sidebar_image("OsitoTierno.png")
      # Ruta del logo
     logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
     # Obtener la imagen codificada
