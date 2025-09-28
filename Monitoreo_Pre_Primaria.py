@@ -33,7 +33,7 @@ def main():
     load_css('style.css')
 
     # Cargar y mostrar la imagen en la barra lateral
-    st.sidebar.image("OsitoTierno.png", use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
+    st.sidebar.image(os.path.join(os.getcwd(), "OsitoTierno.png"), use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
 
      # Ruta del logo
     logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
