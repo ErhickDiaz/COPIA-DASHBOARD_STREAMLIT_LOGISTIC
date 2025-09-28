@@ -67,17 +67,6 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-    def leer_csv_github(repo, filepath):
-        """
-        Lee un CSV desde un repositorio de GitHub y devuelve un DataFrame.
-        """
-        try:
-            file_content = repo.get_contents(f"{GITHUB_FOLDER}/{filepath}")
-            csv_string = file_content.decoded_content.decode("utf-8")
-            return pd.read_csv(StringIO(csv_string))
-        except Exception as e:
-            st.warning(f"No se pudo cargar {filepath} desde GitHub: {e}")
-            return None  # Devuelve None si falla
         
     def actividad_github():
         g = Github(GITHUB_TOKEN)
