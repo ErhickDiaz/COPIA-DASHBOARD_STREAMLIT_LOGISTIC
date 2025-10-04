@@ -1265,7 +1265,6 @@ P. Ideal,CEDIS,Verificada,24,600,2025-10-03 16:14:13
 P. Ideal,CEDIS,Verificada,22,1280,2025-10-03 16:14:28
 P. Ideal,CEDIS,Verificada,22,1259,2025-10-03 16:50:20
 P. Ideal,CEDIS,Verificada,22,1206,2025-10-03 16:50:36
-P. Chillán,CEDIS,En transito,24,1603,2025-10-03 16:51:21
 P. Ideal,CEDIS,Verificada,22,1320,2025-10-03 17:11:50
 P. Ideal,CEDIS,Verificada,22,1255,2025-10-03 17:56:43
 P. Ideal,CEDIS,Verificada,22,1320,2025-10-03 18:26:56
@@ -1301,7 +1300,8 @@ P. Ideal,CEDIS,Verificada,23,1254,2025-10-04 06:38:00
 P. Ideal,CEDIS,Verificada,22,1320,2025-10-04 07:37:59
 P. Ideal,CEDIS,Verificada,22,1172,2025-10-04 08:20:14
 P. Ideal,CEDIS,Verificada,24,600,2025-10-04 08:27:08
-P. Ideal,CEDIS,En transito,22,1296,2025-10-04 08:33:18
-P. Ideal,CEDIS,Recep Iniciada,24,600,2025-10-04 08:42:41
 P. Ideal,CEDIS,En transito,24,600,2025-10-04 09:04:32
-P. Ideal,CEDIS,Recep Iniciada,23,1282,2025-10-04 09:06:03
+P. Ideal,CEDIS,Recep Completa,23,1282,2025-10-04 09:09:11
+P. Ideal,CEDIS,Recep Completa,24,600,2025-10-04 09:16:55
+P. Chillán,CEDIS,Recep Iniciada,24,1603,2025-10-04 09:17:42
+P. Ideal,CEDIS,Recep Iniciada,22,1296,2025-10-04 09:26:15
