@@ -82,7 +82,13 @@ def main():
         g = Github(GITHUB_TOKEN)
         repo = g.get_repo(REPO_NAME)
         
-        fecha_local = datetime.now().strftime('%Y_%m_%d')
+        
+        # Zona horaria de Chile
+        chile_tz = pytz.timezone("America/Santiago")
+        
+        # Fecha local en Chile
+        fecha_local = datetime.now(chile_tz).strftime('%Y_%m_%d')
+
         saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
         tractos_file = "Tractos_Transito_Pre_primaria.csv"
     
