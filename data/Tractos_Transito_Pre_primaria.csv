@@ -1,7 +1,6 @@
 Desde,Hasta,Estado,LPNs Env,Bult. Env,Hora de salida
 SNH,CEDIS,En transito,0,0,2025-11-04 09:39:02
 P. Ideal,CEDIS,En transito,20,1200,2025-12-20 14:19:37
-P. Chillán,CEDIS,En transito,24,1440,2025-12-22 08:54:50
 Barcel,CEDIS,En transito,30,1680,2025-12-22 10:41:14
 P. Chillán,CEDIS,En transito,27,1536,2025-12-22 11:36:45
 P. Chillán,CEDIS,En transito,26,1560,2025-12-22 12:56:04
@@ -10,5 +9,5 @@ P. Chillán,CEDIS,En transito,26,1560,2025-12-22 17:52:56
 NB,CEDIS,En transito,26,2626,2025-12-22 17:58:18
 P. Chillán,CEDIS,En transito,25,1440,2025-12-22 18:59:05
 Barcel,CEDIS,En transito,24,1288,2025-12-22 20:15:13
-P. Ideal,CEDIS,En transito,22,1320,2025-12-22 21:32:31
 P. Ideal,CEDIS,En transito,23,1316,2025-12-22 22:11:00
+Barcel,CEDIS,En transito,28,1788,2025-12-22 22:55:39
