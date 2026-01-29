@@ -55,10 +55,10 @@ def main():
     # Establecer la frecuencia de actualización solo en la página seleccionada
     st_autorefresh(interval=180000, key="page_refresh")  # Intervalo en milisegundos (3 minutos)
     
-   if "ultima_actualizacion_real" in st.session_state:
-    hora = st.session_state["ultima_actualizacion_real"].strftime("%d-%m-%Y %H:%M")
+    if "ultima_actualizacion_real" in st.session_state:
+        hora = st.session_state["ultima_actualizacion_real"].strftime("%d-%m-%Y %H:%M")
     else:
-    hora = "Sin datos"
+        hora = "Sin datos"
 
     st.markdown(
     f"""
