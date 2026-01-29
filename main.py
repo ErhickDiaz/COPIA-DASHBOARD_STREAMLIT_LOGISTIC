@@ -55,14 +55,15 @@ def main():
     # Establecer la frecuencia de actualización solo en la página seleccionada
     st_autorefresh(interval=180000, key="page_refresh")  # Intervalo en milisegundos (3 minutos)
     
-   # ⏰ Hora real de Chile
-    chile_tz = pytz.timezone("America/Santiago")
-    ahora = datetime.now(chile_tz).strftime("%d-%m-%Y %H:%M")
+   if "ultima_actualizacion_real" in st.session_state:
+    hora = st.session_state["ultima_actualizacion_real"].strftime("%d-%m-%Y %H:%M")
+    else:
+    hora = "Sin datos"
 
     st.markdown(
     f"""
     <div style='text-align: right; font-size: 16px; margin-top: -10px; margin-bottom: 20px; color: #555;'>
-        Última actualización: <b>{ahora}</b>
+        Última actualización (dato real): <b>{hora}</b>
     </div>
     """,
     unsafe_allow_html=True
