@@ -79,35 +79,35 @@ def main():
 
         
     def actividad_github():
-    g = Github(GITHUB_TOKEN)
-    repo = g.get_repo(REPO_NAME)
+        g = Github(GITHUB_TOKEN)
+        repo = g.get_repo(REPO_NAME)
 
-    chile_tz = pytz.timezone("America/Santiago")
-    fecha_local = datetime.now(chile_tz).strftime('%Y_%m_%d')
+        chile_tz = pytz.timezone("America/Santiago")
+        fecha_local = datetime.now(chile_tz).strftime('%Y_%m_%d')
 
-    saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
-    tractos_file = "Tractos_Transito_Pre_primaria.csv"
+        saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
+        tractos_file = "Tractos_Transito_Pre_primaria.csv"
 
-    df_satu = leer_csv_github(repo, saturacion_file)
-    df_T_Pre_Primaria = leer_csv_github(repo, tractos_file)
+        df_satu = leer_csv_github(repo, saturacion_file)
+        df_T_Pre_Primaria = leer_csv_github(repo, tractos_file)
 
-    if not df_satu.empty:
-        # Convertir Fecha a datetime
-        df_satu["Fecha"] = pd.to_datetime(df_satu["Fecha"])
+        if not df_satu.empty:
+            # Convertir Fecha a datetime
+            df_satu["Fecha"] = pd.to_datetime(df_satu["Fecha"])
 
-        # Última marca de tiempo real
-        ultima = df_satu["Fecha"].max()
+            # Última marca de tiempo real
+            ultima = df_satu["Fecha"].max()
 
-        # Guardar para main.py
-        st.session_state["ultima_actualizacion_real"] = ultima
+            # Guardar para main.py
+            st.session_state["ultima_actualizacion_real"] = ultima
 
-        saturacion = df_satu['Saturación'].iloc[-1]
-        n_pallets = df_satu['N° de pallets'].iloc[-1]
-    else:
-        saturacion = None
-        n_pallets = None
+            saturacion = df_satu['Saturación'].iloc[-1]
+            n_pallets = df_satu['N° de pallets'].iloc[-1]
+        else:
+            saturacion = None
+            n_pallets = None
 
-    return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
+        return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
 
     df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
     
