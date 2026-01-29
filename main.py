@@ -6,6 +6,7 @@ from Monitoreo_Flota_Secundaria import main as flota_secundaria_main
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 import time
+import pytz
 
 st.set_page_config(layout="wide")
 
