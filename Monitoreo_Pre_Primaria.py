@@ -93,6 +93,16 @@ def main():
         tractos_file = "Tractos_Transito_Pre_primaria.csv"
     
         df_satu = leer_csv_github(repo, saturacion_file)
+        if not df_satu.empty:
+        # Convertir columna Fecha a datetime real
+        df_satu["Fecha"] = pd.to_datetime(df_satu["Fecha"])
+
+        # Obtener la última marca de tiempo real
+        ultima = df_satu["Fecha"].max()
+
+         # Guardarla para que main.py la use
+        st.session_state["ultima_actualizacion_real"] = ultima
+        
         df_T_Pre_Primaria = leer_csv_github(repo, tractos_file)
     
         if not df_satu.empty:
