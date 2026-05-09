@@ -13,8 +13,8 @@ def main():
     st.sidebar.image("OsitoTierno.png", use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
 
     # Título de la página
-    st.title("Página 3")
+    
+    st.title("📦 MaxCube Primaria")
+    st.caption("Análisis de utilización de carga – OTM - WMS")
 
-    st.write("¡Bienvenido a la Página 3!")
-    st.write("Aquí puedes agregar otros datos o funcionalidades.")
 
