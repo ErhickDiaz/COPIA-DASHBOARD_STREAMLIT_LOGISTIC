@@ -146,27 +146,61 @@ def main():
 
     st.divider()
 
+
+    ###### GRAFICO POR DESTINO/AGENCIA####
+
+    st.subheader("📍 Bultos despachados por destino")
+
+    # Agrupar por destino
+    gd = (
+        f.groupby("Destino Agencia concat", as_index=False)["Bultos despachados"]
+        .sum()
+        .sort_values("Bultos despachados", ascending=False)
+    )
+    
+    # Limitar a Top 10 destinos (ajustable)
+    top_n = 10
+    gd_top = gd.head(top_n)
+    
+    fig = px.bar(
+        gd_top,
+        x="Bultos despachados",
+        y="Destino Agencia concat",
+        orientation="h",
+        labels={
+            "Bultos despachados": "Bultos despachados",
+            "Destino Agencia concat": "Destino"
+        },
+        text="Bultos despachados"
+    )
+    
+    fig.update_layout(
+        yaxis=dict(autorange="reversed"),  # destino con más bultos arriba
+        height=500
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
     # ==============================
     # GRÁFICO POR HORA
     # ==============================
-    st.subheader("⏱️ Bultos despachados por hora")
+    #st.subheader("⏱️ Bultos despachados por hora")
 
-    gh = (
-        f.groupby("Hora_num", as_index=False)["Bultos despachados"]
-        .sum()
-    )
+    #gh = (
+    #    f.groupby("Hora_num", as_index=False)["Bultos despachados"]
+    #    .sum()
+    #)
 
-    fig = px.bar(
-        gh,
-        x="Hora_num",
-        y="Bultos despachados",
-        labels={
-            "Hora_num": "Hora del día",
-            "Bultos despachados": "Bultos"
-        }
-    )
+    #fig = px.bar(
+    #    gh,
+     #   x="Hora_num",
+    #    y="Bultos despachados",
+     #   labels={
+     #       "Hora_num": "Hora del día",
+      #      "Bultos despachados": "Bultos"
+     #   }
+    #)
 
-    st.plotly_chart(fig, use_container_width=True)
+    #st.plotly_chart(fig, use_container_width=True)
 
     # ==============================
     # TABLA DETALLE
