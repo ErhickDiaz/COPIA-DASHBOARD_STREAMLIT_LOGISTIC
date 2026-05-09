@@ -165,9 +165,9 @@ def main():
     
     fig = px.scatter(
         f_plot,
-        color="Destino Agencia concat,
         x="Despacho_dt",
         y="Bultos despachados",
+        color="Destino Agencia concat",
         hover_data=["Destino Agencia concat", "PROVEEDOR", "Bitácora", "Nro carga"],
         labels={
             "Despacho_dt": "Día y hora",
