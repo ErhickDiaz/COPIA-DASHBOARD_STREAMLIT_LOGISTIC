@@ -149,34 +149,37 @@ def main():
 
     ###### GRAFICO POR DESTINO/AGENCIA####
 
-    st.subheader("📍 Bultos despachados por destino")
+    st.subheader("📈 Bultos despachados por despacho (día y hora)")
 
-    # Agrupar por destino
-    gd = (
-        f.groupby("Destino Agencia concat", as_index=False)["Bultos despachados"]
-        .sum()
-        .sort_values("Bultos despachados", ascending=False)
+    # Construir datetime completo
+    f["Despacho_dt"] = pd.to_datetime(
+        f["Fecha de despacho"].astype(str) + " " + f["Hora de despacho"].astype(str),
+        errors="coerce"
     )
     
-    # Limitar a Top 10 destinos (ajustable)
-    top_n = 10
-    gd_top = gd.head(top_n)
+    # Quitar nulos por seguridad
+    f_plot = f.dropna(subset=["Despacho_dt", "Bultos despachados"])
     
-    fig = px.bar(
-        gd_top,
-        x="Bultos despachados",
-        y="Destino Agencia concat",
-        orientation="h",
+    fig = px.scatter(
+        f_plot,
+        x="Despacho_dt",
+        y="Bultos despachados",
+        hover_data=[
+            "Destino Agencia concat",
+            "PROVEEDOR",
+            "Bitácora",
+            "Nro carga"
+        ],
         labels={
-            "Bultos despachados": "Bultos despachados",
-            "Destino Agencia concat": "Destino"
-        },
-        text="Bultos despachados"
+            "Despacho_dt": "Fecha y hora de despacho",
+            "Bultos despachados": "Bultos despachados"
+        }
     )
     
     fig.update_layout(
-        yaxis=dict(autorange="reversed"),  # destino con más bultos arriba
-        height=500
+        height=500,
+        xaxis_title="Fecha y hora",
+        yaxis_title="Bultos",
     )
     
     st.plotly_chart(fig, use_container_width=True)
