@@ -2,7 +2,7 @@ import streamlit as st
 from Inicio import main as inicio_main
 from Monitoreo_Pre_Primaria import main as pre_primaria_main
 from Monitoreo_Flota_Primaria import main as flota_primaria_main
-from Monitoreo_Flota_Secundaria import main as flota_secundaria_main
+from MaxCube Primaria import main as maxcube_primaria_main
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 import time
@@ -45,7 +45,7 @@ def main():
         "Inicio": "🏠",
         "Monitoreo Pre Primaria": "📊",
         "Monitoreo Flota Primaria": "🚚",
-        "Monitoreo Flota Secundaria": "🚛"
+        "MaxCube Primaria": "📦"
     }
 
     for option, icon in options.items():
@@ -76,7 +76,7 @@ def main():
         pre_primaria_main()
     elif st.session_state.selection == "Monitoreo Flota Primaria":
         flota_primaria_main()
-    elif st.session_state.selection == "Monitoreo Flota Secundaria":
+    elif st.session_state.selection == "MaxCube Primaria":
         flota_secundaria_main()
 
 if __name__ == "__main__":
