@@ -22,7 +22,10 @@ ZONA_HORARIA = "America/Santiago"
 # ==============================
 # CARGA DE DATOS
 # ==============================
-@st.cache_data(show_spinner=True)
+
+
+@st.cache_data(ttl=60)  # 60 segundos = 1 minuto
+
 def cargar_maxcube():
     resp = requests.get(RAW_MAXCUBE_URL, timeout=60)
     resp.raise_for_status()
