@@ -151,38 +151,51 @@ def main():
 
     st.subheader("📈 Bultos despachados por despacho (día y hora)")
 
-    # Construir datetime completo
+    # Construir datetime completo (día + hora)
     f["Despacho_dt"] = pd.to_datetime(
         f["Fecha de despacho"].astype(str) + " " + f["Hora de despacho"].astype(str),
         errors="coerce"
     )
     
-    # Quitar nulos por seguridad
-    f_plot = f.dropna(subset=["Despacho_dt", "Bultos despachados"])
+    # Ordenar por tiempo para que la línea conecte correctamente
+    f_plot = (
+        f.dropna(subset=["Despacho_dt", "Bultos despachados"])
+         .sort_values("Despacho_dt")
+    )
     
     fig = px.scatter(
         f_plot,
+        color="Destino Agencia concat,
         x="Despacho_dt",
         y="Bultos despachados",
-        hover_data=[
-            "Destino Agencia concat",
-            "PROVEEDOR",
-            "Bitácora",
-            "Nro carga"
-        ],
+        hover_data=["Destino Agencia concat", "PROVEEDOR", "Bitácora", "Nro carga"],
         labels={
-            "Despacho_dt": "Fecha y hora de despacho",
-            "Bultos despachados": "Bultos despachados"
+            "Despacho_dt": "Día y hora",
+            "Bultos despachados": "Bultos"
         }
     )
     
+    # ✅ Unir puntos con línea
+    fig.update_traces(mode="lines+markers")
+    
+    # ✅ Eje Y fijo + marcas claras
+    fig.update_yaxes(
+        range=[0, 5000],                 # fija el rango
+        tickmode="array",
+        tickvals=[0, 500, 1000, 5000],   # marcas solicitadas
+        ticktext=["0", "500", "1000", "5000"],
+        zeroline=True,
+        zerolinewidth=2
+    )
+    
     fig.update_layout(
-        height=500,
-        xaxis_title="Fecha y hora",
+        height=520,
+        xaxis_title="Día y hora",
         yaxis_title="Bultos",
     )
     
     st.plotly_chart(fig, use_container_width=True)
+
     # ==============================
     # GRÁFICO POR HORA
     # ==============================
