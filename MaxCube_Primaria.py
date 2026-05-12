@@ -147,12 +147,10 @@ def main():
     st.divider()
     
     
-    df["Despacho_dt"] = pd.to_datetime(
-        df["Fecha de despacho"].astype(str) + " " + df["Hora de despacho"].astype(str),
-        dayfirst=True,
-        errors="coerce"
-    )
-    df = df.sort_values("Despacho_dt", ascending=True).drop(columns=["Despacho_dt"])
+  
+
+    
+
 
     ###### GRAFICO POR DESTINO/AGENCIA####
 
@@ -164,24 +162,30 @@ def main():
         errors="coerce"
     )
     
-    # Ordenar por tiempo para que la línea conecte correctamente
-    f_plot = (
-        f.dropna(subset=["Despacho_dt", "Bultos despachados"])
-         .sort_values("Despacho_dt")
+     # ORDEN DEFINITIVO PARA GRAFICOS
+    f_plot = f.copy()
+    
+    f_plot["Despacho_dt"] = pd.to_datetime(
+        f_plot["Fecha de despacho"].astype(str) + " " + f_plot["Hora de despacho"].astype(str),
+        dayfirst=True,
+        errors="coerce"
+    )
+    
+    # 🔑 ORDEN GLOBAL + POR DESTINO
+    f_plot = f_plot.sort_values(
+        ["Destino Agencia concat", "Despacho_dt"],
+        ascending=[True, True]
     )
     
     fig = px.scatter(
-        f_plot,
-        x="Despacho_dt",
-        y="Bultos despachados",
-        color="Destino Agencia concat",
-        hover_data=["Destino Agencia concat", "PROVEEDOR", "Bitácora", "Nro carga"],
-        labels={
-            "Despacho_dt": "Día y hora",
-            "Bultos despachados": "Bultos"
-        }
+    f_plot,
+    x="Despacho_dt",
+    y="Bultos despachados",
+    color="Destino Agencia concat",
+    hover_data=["Destino Agencia concat", "PROVEEDOR", "Bitácora", "Nro carga"]
     )
     
+        
     # ✅ Unir puntos con línea
     fig.update_traces(mode="lines+markers")
     
@@ -224,7 +228,27 @@ def main():
     #)
 
     #st.plotly_chart(fig, use_container_width=True)
+    # ORDEN DEFINITIVO PARA TABLA (cronológico)
+    f_tabla = f.copy()
+    
+    f_tabla["Despacho_dt"] = pd.to_datetime(
+        f_tabla["Fecha de despacho"].astype(str) + " " + f_tabla["Hora de despacho"].astype(str),
+        dayfirst=True,
+        errors="coerce"
+    )
 
+    f_tabla = f_tabla.sort_values("Despacho_dt", ascending
+
+    
+    st.subheader("📄 Detalle de despachos")
+    
+    st.data_editor(
+        f_tabla.drop(columns=["Despacho_dt"]),
+        use_container_width=True,
+        height=520,
+        disabled=True
+    )
+                              
     # ==============================
     # TABLA DETALLE
     # ==============================
