@@ -237,7 +237,7 @@ def main():
         errors="coerce"
     )
 
-    f_tabla = f_tabla.sort_values("Despacho_dt", ascending)
+    f_tabla = f_tabla.sort_values("Despacho_dt", ascending=True)
 
     
     st.subheader("📄 Detalle de despachos")
