@@ -237,7 +237,7 @@ def main():
         errors="coerce"
     )
 
-    f_tabla = f_tabla.sort_values("Despacho_dt", ascending
+    f_tabla = f_tabla.sort_values("Despacho_dt", ascending)
 
     
     st.subheader("📄 Detalle de despachos")
@@ -252,8 +252,8 @@ def main():
     # ==============================
     # TABLA DETALLE
     # ==============================
-    st.subheader("📄 Detalle de despachos")
-    st.dataframe(f, use_container_width=True, height=520)
+    #st.subheader("📄 Detalle de despachos")
+    #st.dataframe(f, use_container_width=True, height=520)
 
     # ==============================
     # DESCARGA
