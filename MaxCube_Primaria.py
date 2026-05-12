@@ -145,7 +145,14 @@ def main():
     )
 
     st.divider()
-
+    
+    
+    df["Despacho_dt"] = pd.to_datetime(
+        df["Fecha de despacho"].astype(str) + " " + df["Hora de despacho"].astype(str),
+        dayfirst=True,
+        errors="coerce"
+    )
+    df = df.sort_values("Despacho_dt", ascending=True).drop(columns=["Despacho_dt"])
 
     ###### GRAFICO POR DESTINO/AGENCIA####
 
