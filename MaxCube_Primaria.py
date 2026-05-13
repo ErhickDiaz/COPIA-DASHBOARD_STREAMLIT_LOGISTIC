@@ -1,68 +1,261 @@
 import streamlit as st
-import requests
-from io import StringIO
 import pandas as pd
-import plotly.express as px
+from github import Github
+from io import StringIO
 from datetime import datetime
 import pytz
+import plotly.express as px
 
 
-
-# ==============================
+# =========================================================
 # CONFIG
-# ==============================
-RAW_MAXCUBE_URL = (
-    "https://raw.githubusercontent.com/"
-    "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC/"
-    "main/data/MAXCUBE_Primaria.csv"
-)
-
+# =========================================================
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
+GITHUB_FOLDER = "data"
+ARCHIVO_MAXCUBE = "MAXCUBE_Primaria.csv"
 ZONA_HORARIA = "America/Santiago"
 
-# ==============================
-# CARGA DE DATOS
-# ==============================
+# =========================================================
+# REGLAS DE CAPACIDAD
+# =========================================================
+CAPACIDAD_100_DESTINO = {
+    "ANTOFAGASTA": 1800,
+    "CHILLAN": 1700,
+    "CONCEPCION": 1700,
+    "COPIAPO": 1750,
+    "EL PINAR": 1250,
+    "IQUIQUE": 1800,
+    "LA SERENA": 1700,
+    "LA SERENA / RUTA SOLITARIA 1059 LV": 1750,
+    "LO ESPEJO": 1560,
+    "LOS ANDES": 1560,
+    "LOS ANGELES": 1700,
+    "MELIPILLA": 1700,
+    "OSORNO": 1800,
+    "PTO MONTT": 1800,
+    "PTO MONTT / RUTA SOLITARIA ELPAC": 1800,
+    "RANCAGUA": 1700,
+    "SAN FERNANDO": 660,
+    "TALCA": 1560,
+    "TEMUCO": 1750,
+    "VALDIVIA": 1800,
+    "VINA DEL MAR": 1664,
+}
+
+PROVEEDOR_CAP_2200 = "76746317-0/TRAILER LOGISTICS SPA"
 
 
-#@st.cache_data(ttl=60)  # 60 segundos = 1 minuto
+# =========================================================
+# GITHUB
+# =========================================================
+def leer_csv_github(repo, filename):
+    try:
+        file_content = repo.get_contents(f"{GITHUB_FOLDER}/{filename}")
+        csv_string = file_content.decoded_content.decode("utf-8")
+        return pd.read_csv(StringIO(csv_string))
+    except Exception as e:
+        st.error(f"No se pudo cargar {filename} desde GitHub: {e}")
+        return pd.DataFrame()
 
+
+# =========================================================
+# CARGA Y ENRIQUECIMIENTO
+# =========================================================
 def cargar_maxcube():
-    resp = requests.get(RAW_MAXCUBE_URL, timeout=60)
-    resp.raise_for_status()
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo(REPO_NAME)
 
-    df = pd.read_csv(StringIO(resp.text))
+    df = leer_csv_github(repo, ARCHIVO_MAXCUBE)
 
-    # Normalizaciones clave
+    if df.empty:
+        return df
+
+    # -------------------------
+    # Normalización básica
+    # -------------------------
+    df.columns = [c.strip() for c in df.columns]
+
+    # Asegurar columnas mínimas
+    columnas_esperadas = [
+        "Bitácora",
+        "Nro carga",
+        "Fecha de despacho",
+        "Hora de despacho",
+        "Destino Agencia concat",
+        "PROVEEDOR",
+        "Viajes",
+        "Bultos despachados",
+    ]
+
+    for col in columnas_esperadas:
+        if col not in df.columns:
+            df[col] = ""
+
+    # Si no existe patente en el CSV actual, la dejamos vacía
+    if "Patente rampla" not in df.columns:
+        df["Patente rampla"] = ""
+
+    # Fecha + hora real
     df["Fecha de despacho"] = pd.to_datetime(
-        df["Fecha de despacho"], dayfirst=True, errors="coerce"
+        df["Fecha de despacho"],
+        dayfirst=True,
+        errors="coerce"
     )
 
-    df["Hora_num"] = pd.to_datetime(
-        df["Hora de despacho"], format="%H:%M:%S", errors="coerce"
-    ).dt.hour
+    df["Hora de despacho"] = df["Hora de despacho"].astype(str)
 
+    df["Fecha despacho dt"] = pd.to_datetime(
+        df["Fecha de despacho"].dt.strftime("%d/%m/%Y") + " " + df["Hora de despacho"],
+        dayfirst=True,
+        errors="coerce"
+    )
+
+    # Numéricos
     df["Bultos despachados"] = pd.to_numeric(
-        df["Bultos despachados"], errors="coerce"
+        df["Bultos despachados"],
+        errors="coerce"
     ).fillna(0)
 
     df["Viajes"] = pd.to_numeric(
-        df["Viajes"], errors="coerce"
-    ).fillna(0)
+        df["Viajes"],
+        errors="coerce"
+    ).fillna(1)
+
+    # -------------------------
+    # Campos temporales
+    # -------------------------
+    df["Fecha"] = df["Fecha despacho dt"].dt.date
+    df["Semana"] = df["Fecha despacho dt"].dt.isocalendar().week.astype("Int64")
+    df["Año-Semana"] = (
+        df["Fecha despacho dt"].dt.isocalendar().year.astype(str)
+        + "-W"
+        + df["Fecha despacho dt"].dt.isocalendar().week.astype(str).str.zfill(2)
+    )
+    df["Mes"] = df["Fecha despacho dt"].dt.strftime("%Y-%m")
+
+    # -------------------------
+    # Capacidad / Uso / Gap
+    # -------------------------
+    df["Capacidad 100%"] = df["Destino Agencia concat"].map(CAPACIDAD_100_DESTINO)
+
+    df.loc[
+        df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
+        "Capacidad 100%"
+    ] = 2200
+
+    df["Uso MaxCube %"] = (
+        df["Bultos despachados"] / df["Capacidad 100%"] * 100
+    ).round(2)
+
+    df["Gap a 100%"] = df["Capacidad 100%"] - df["Bultos despachados"]
+
+    # Orden ascendente base
+    df = df.sort_values(
+        ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
+        ascending=[True, True, True, True]
+    )
 
     return df
 
 
-# ==============================
-# APP
-# ==============================
-def main():
+# =========================================================
+# AUXILIARES
+# =========================================================
+def semaforo(valor):
+    if pd.isna(valor):
+        return "⚪"
+    elif valor < 90:
+        return "🔴"
+    elif valor < 100:
+        return "🟠"
+    else:
+        return "🟢"
 
-    st.session_state["ultima_actualizacion_real"] = datetime.now(
-        pytz.timezone(ZONA_HORARIA)
+
+def resumen_por_destino(f):
+    if f.empty:
+        return pd.DataFrame()
+
+    resumen = (
+        f.groupby("Destino Agencia concat", as_index=False)
+        .agg(
+            Bultos=("Bultos despachados", "sum"),
+            Viajes=("Viajes", "sum"),
+            Capacidad=("Capacidad 100%", "sum"),
+            Gap=("Gap a 100%", "sum")
+        )
     )
 
+    resumen["Uso MaxCube %"] = (
+        resumen["Bultos"] / resumen["Capacidad"] * 100
+    ).round(2)
+
+    resumen["Semáforo"] = resumen["Uso MaxCube %"].apply(semaforo)
+
+    resumen = resumen.sort_values("Uso MaxCube %", ascending=True)
+    return resumen
+
+
+def resumen_por_patente(f):
+    if f.empty or "Patente rampla" not in f.columns:
+        return pd.DataFrame()
+
+    f_pat = f.copy()
+    f_pat = f_pat[f_pat["Patente rampla"].astype(str).str.strip() != ""]
+
+    if f_pat.empty:
+        return pd.DataFrame()
+
+    resumen = (
+        f_pat.groupby("Patente rampla", as_index=False)
+        .agg(
+            Destinos=("Destino Agencia concat", lambda x: " / ".join(sorted(set([str(v) for v in x if pd.notna(v) and str(v).strip() != ""])))),
+            Proveedores=("PROVEEDOR", lambda x: " / ".join(sorted(set([str(v) for v in x if pd.notna(v) and str(v).strip() != ""])))),
+            Bultos=("Bultos despachados", "sum"),
+            Viajes=("Viajes", "sum"),
+            Capacidad=("Capacidad 100%", "sum"),
+            Gap=("Gap a 100%", "sum")
+        )
+    )
+
+    resumen["Uso MaxCube %"] = (
+        resumen["Bultos"] / resumen["Capacidad"] * 100
+    ).round(2)
+
+    resumen["Semáforo"] = resumen["Uso MaxCube %"].apply(semaforo)
+    resumen = resumen.sort_values("Uso MaxCube %", ascending=True)
+
+    return resumen
+
+
+def metricas_globales(f):
+    if f.empty:
+        return 0, 0, 0, 0, 0
+
+    total_bultos = f["Bultos despachados"].sum()
+    total_viajes = f["Viajes"].sum()
+    total_destinos = f["Destino Agencia concat"].nunique()
+    total_capacidad = pd.to_numeric(f["Capacidad 100%"], errors="coerce").fillna(0).sum()
+
+    uso_global = round((total_bultos / total_capacidad * 100), 2) if total_capacidad > 0 else 0
+    total_gap = pd.to_numeric(f["Gap a 100%"], errors="coerce").fillna(0).sum()
+
+    return total_bultos, total_viajes, total_destinos, uso_global, total_gap
+
+
+# =========================================================
+# APP
+# =========================================================
+def main():
+    chile_tz = pytz.timezone(ZONA_HORARIA)
+    st.session_state["ultima_actualizacion_real"] = datetime.now(chile_tz)
+
     st.title("📦 MaxCube – Transporte Primaria")
-    st.caption("Fuente: Oracle WMS → GitHub (MAXCUBE_Primaria.csv)")
+    st.caption("Fuente: GitHub /data/MAXCUBE_Primaria.csv")
+
+    if st.sidebar.button("🔄 Actualizar datos"):
+        st.rerun()
 
     df = cargar_maxcube()
 
@@ -70,194 +263,240 @@ def main():
         st.warning("El archivo MAXCUBE no contiene registros.")
         return
 
-    # ==============================
-    # SIDEBAR – FILTROS
-    # ==============================
+    # -----------------------------------------
+    # SIDEBAR
+    # -----------------------------------------
     with st.sidebar:
         st.header("🔎 Filtros")
 
-        # Fechas
-        f_min = df["Fecha de despacho"].min()
-        f_max = df["Fecha de despacho"].max()
+        modo = st.radio("Periodo", ["Día", "Semana", "Mes"], index=0)
 
-        f_ini, f_fin = st.date_input(
-            "Fecha de despacho",
-            value=(f_min.date(), f_max.date()),
-        )
+        f = df.copy()
 
-        # Horas
-        h_ini, h_fin = st.slider(
-            "Hora de despacho",
-            min_value=0,
-            max_value=23,
-            value=(0, 23)
-        )
+        if modo == "Día":
+            fechas_validas = sorted(f["Fecha"].dropna().unique())
+            fecha_sel = st.selectbox(
+                "Fecha",
+                fechas_validas,
+                index=len(fechas_validas) - 1 if len(fechas_validas) > 0 else 0
+            )
+            f = f[f["Fecha"] == fecha_sel]
 
-        # Proveedor
-        proveedores = sorted(df["PROVEEDOR"].dropna().unique())
+        elif modo == "Semana":
+            semanas_validas = sorted(f["Año-Semana"].dropna().unique())
+            semana_sel = st.selectbox(
+                "Semana",
+                semanas_validas,
+                index=len(semanas_validas) - 1 if len(semanas_validas) > 0 else 0
+            )
+            f = f[f["Año-Semana"] == semana_sel]
+
+        else:
+            meses_validos = sorted(f["Mes"].dropna().unique())
+            mes_sel = st.selectbox(
+                "Mes",
+                meses_validos,
+                index=len(meses_validos) - 1 if len(meses_validos) > 0 else 0
+            )
+            f = f[f["Mes"] == mes_sel]
+
+        destinos = sorted(f["Destino Agencia concat"].dropna().astype(str).unique())
+        destino_sel = st.multiselect("Destino", destinos)
+
+        proveedores = sorted(f["PROVEEDOR"].dropna().astype(str).unique())
         prov_sel = st.multiselect("Proveedor", proveedores)
 
-        # Destino
-        destinos = sorted(df["Destino Agencia concat"].dropna().unique())
-        dest_sel = st.multiselect("Destino", destinos)
+        patentes = sorted(
+            [p for p in f["Patente rampla"].dropna().astype(str).unique() if p.strip() != ""]
+        )
+        pat_sel = st.multiselect("Patente rampla", patentes)
 
-    # ==============================
-    # APLICAR FILTROS
-    # ==============================
-    f = df.copy()
+        if destino_sel:
+            f = f[f["Destino Agencia concat"].isin(destino_sel)]
 
-    f = f[
-        (f["Fecha de despacho"].dt.date >= f_ini) &
-        (f["Fecha de despacho"].dt.date <= f_fin)
-    ]
+        if prov_sel:
+            f = f[f["PROVEEDOR"].isin(prov_sel)]
 
-    f = f[f["Hora_num"].between(h_ini, h_fin)]
+        if pat_sel:
+            f = f[f["Patente rampla"].isin(pat_sel)]
 
-    if prov_sel:
-        f = f[f["PROVEEDOR"].isin(prov_sel)]
-
-    if dest_sel:
-        f = f[f["Destino Agencia concat"].isin(dest_sel)]
-
-    # ==============================
-    # KPIs
-    # ==============================
-    c1, c2, c3, c4 = st.columns(4)
-
-    c1.metric(
-        "📦 Bultos despachados",
-        f"{int(f['Bultos despachados'].sum()):,}".replace(",", ".")
+    # Orden definitivo del filtrado
+    f = f.sort_values(
+        ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
+        ascending=[True, True, True, True]
     )
 
-    c2.metric(
-        "🚚 Viajes",
-        f"{int(f['Viajes'].sum()):,}".replace(",", ".")
-    )
+    # -----------------------------------------
+    # KPIS
+    # -----------------------------------------
+    total_bultos, total_viajes, total_destinos, uso_global, total_gap = metricas_globales(f)
 
-    c3.metric(
-        "🏢 Proveedores",
-        f["PROVEEDOR"].nunique()
-    )
-
-    c4.metric(
-        "📍 Destinos",
-        f["Destino Agencia concat"].nunique()
-    )
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("📦 Bultos", f"{int(total_bultos):,}".replace(",", "."))
+    c2.metric("🚚 Viajes", f"{int(total_viajes):,}".replace(",", "."))
+    c3.metric("📍 Destinos", total_destinos)
+    c4.metric("📊 Uso global %", f"{uso_global}%")
+    c5.metric("📉 Gap total", f"{int(total_gap):,}".replace(",", "."))
 
     st.divider()
-    
-    
-  
 
-    
+    # -----------------------------------------
+    # RESUMEN POR DESTINO (VISUAL PRINCIPAL)
+    # -----------------------------------------
+    df_dest = resumen_por_destino(f)
 
-
-    ###### GRAFICO POR DESTINO/AGENCIA####
-
-    st.subheader("📈 Bultos despachados por despacho (día y hora)")
-
-    # Construir datetime completo (día + hora)
-    f["Despacho_dt"] = pd.to_datetime(
-        f["Fecha de despacho"].astype(str) + " " + f["Hora de despacho"].astype(str),
-        errors="coerce"
-    )
-    
-     # ORDEN DEFINITIVO PARA GRAFICOS
-    f_plot = f.copy()
-    
-    f_plot["Despacho_dt"] = pd.to_datetime(
-        f_plot["Fecha de despacho"].astype(str) + " " + f_plot["Hora de despacho"].astype(str),
-        dayfirst=True,
-        errors="coerce"
-    )
-    
-    # 🔑 ORDEN GLOBAL + POR DESTINO
-    f_plot = f_plot.sort_values(
-        ["Destino Agencia concat", "Despacho_dt"],
-        ascending=[True, True]
-    )
-    
-    fig = px.scatter(
-    f_plot,
-    x="Despacho_dt",
-    y="Bultos despachados",
-    color="Destino Agencia concat",
-    hover_data=["Destino Agencia concat", "PROVEEDOR", "Bitácora", "Nro carga"]
-    )
-    
-        
-    # ✅ Unir puntos con línea
-    fig.update_traces(mode="lines+markers")
-    
-    # ✅ Eje Y fijo + marcas claras
-    fig.update_yaxes(
-        range=[0, 5000],                 # fija el rango
-        tickmode="array",
-        tickvals=[0, 500, 1000, 5000],   # marcas solicitadas
-        ticktext=["0", "500", "1000", "5000"],
-        zeroline=True,
-        zerolinewidth=2
-    )
-    
-    fig.update_layout(
-        height=520,
-        xaxis_title="Día y hora",
-        yaxis_title="Bultos",
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-
-    # ==============================
-    # GRÁFICO POR HORA
-    # ==============================
-    #st.subheader("⏱️ Bultos despachados por hora")
-
-    #gh = (
-    #    f.groupby("Hora_num", as_index=False)["Bultos despachados"]
-    #    .sum()
-    #)
-
-    #fig = px.bar(
-    #    gh,
-     #   x="Hora_num",
-    #    y="Bultos despachados",
-     #   labels={
-     #       "Hora_num": "Hora del día",
-      #      "Bultos despachados": "Bultos"
-     #   }
-    #)
-
-    #st.plotly_chart(fig, use_container_width=True)
-    # ORDEN DEFINITIVO PARA TABLA (cronológico)
-    f_tabla = f.copy()
-    
-    f_tabla["Despacho_dt"] = pd.to_datetime(
-        f_tabla["Fecha de despacho"].astype(str) + " " + f_tabla["Hora de despacho"].astype(str),
-        dayfirst=True,
-        errors="coerce"
-    )
-
-    f_tabla = f_tabla.sort_values("Despacho_dt", ascending=True)
-
-    
-    st.subheader("📄 Detalle de despachos")
-    
+    st.subheader("📋 Resumen por destino")
     st.data_editor(
-        f_tabla.drop(columns=["Despacho_dt"]),
+        df_dest[["Semáforo", "Destino Agencia concat", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
         use_container_width=True,
-        height=520,
+        disabled=True,
+        height=420
+    )
+
+    # -----------------------------------------
+    # ALERTAS AUTOMÁTICAS
+    # -----------------------------------------
+    st.subheader("🚨 Alertas automáticas")
+
+    criticos = df_dest[df_dest["Uso MaxCube %"] < 90]
+    sobrecap = df_dest[df_dest["Gap"] < 0]
+
+    if criticos.empty and sobrecap.empty:
+        st.success("✅ No se detectan alertas críticas en el periodo seleccionado.")
+    else:
+        if not criticos.empty:
+            st.error(
+                "🔴 Destinos bajo 90% de uso MaxCube: "
+                + ", ".join(criticos["Destino Agencia concat"].astype(str).tolist())
+            )
+
+        if not sobrecap.empty:
+            st.warning(
+                "⚠️ Destinos sobre 100% de capacidad: "
+                + ", ".join(sobrecap["Destino Agencia concat"].astype(str).tolist())
+            )
+
+    # -----------------------------------------
+    # RANKING AUTOMÁTICO
+    # -----------------------------------------
+    st.subheader("🏆 Ranking automático")
+
+    col_r1, col_r2 = st.columns(2)
+
+    with col_r1:
+        st.markdown("### 🔻 Top 5 peores destinos")
+        ranking_peor = df_dest.sort_values("Uso MaxCube %", ascending=True).head(5)
+        st.data_editor(
+            ranking_peor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
+            use_container_width=True,
+            height=220,
+            disabled=True
+        )
+
+    with col_r2:
+        st.markdown("### 🟢 Top 5 mejores destinos")
+        ranking_mejor = df_dest.sort_values("Uso MaxCube %", ascending=False).head(5)
+        st.data_editor(
+            ranking_mejor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
+            use_container_width=True,
+            height=220,
+            disabled=True
+        )
+
+    # -----------------------------------------
+    # VISUAL 1 - Uso MaxCube % por destino
+    # -----------------------------------------
+    st.subheader("📊 Uso MaxCube % por destino")
+
+    fig_uso = px.bar(
+        df_dest.sort_values("Uso MaxCube %", ascending=True),
+        x="Uso MaxCube %",
+        y="Destino Agencia concat",
+        orientation="h",
+        text="Uso MaxCube %",
+        color="Uso MaxCube %",
+        color_continuous_scale="RdYlGn"
+    )
+
+    fig_uso.add_vline(x=100, line_dash="dash", line_color="red", line_width=2)
+
+    fig_uso.update_layout(
+        height=600,
+        xaxis_title="Uso MaxCube %",
+        yaxis_title="Destino",
+        coloraxis_showscale=False
+    )
+
+    st.plotly_chart(fig_uso, use_container_width=True)
+
+    # -----------------------------------------
+    # VISUAL 2 - Gap a 100% por destino
+    # -----------------------------------------
+    st.subheader("📉 Gap a 100% por destino")
+
+    fig_gap = px.bar(
+        df_dest.sort_values("Gap", ascending=True),
+        x="Gap",
+        y="Destino Agencia concat",
+        orientation="h",
+        text="Gap"
+    )
+
+    fig_gap.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
+
+    fig_gap.update_layout(
+        height=600,
+        xaxis_title="Gap a 100% (bultos)",
+        yaxis_title="Destino"
+    )
+
+    st.plotly_chart(fig_gap, use_container_width=True)
+
+    # -----------------------------------------
+    # RESUMEN POR PATENTE (solo si existe)
+    # -----------------------------------------
+    df_pat = resumen_por_patente(f)
+
+    if not df_pat.empty:
+        st.subheader("🚛 Resumen por patente rampla")
+        st.data_editor(
+            df_pat[["Semáforo", "Patente rampla", "Destinos", "Proveedores", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
+            use_container_width=True,
+            height=350,
+            disabled=True
+        )
+
+    # -----------------------------------------
+    # DETALLE ORDENADO ASCENDENTE
+    # -----------------------------------------
+    st.subheader("📄 Detalle de despachos (orden ascendente)")
+
+    columnas_detalle = [
+        "Fecha de despacho",
+        "Hora de despacho",
+        "Destino Agencia concat",
+        "PROVEEDOR",
+        "Patente rampla",
+        "Capacidad 100%",
+        "Bultos despachados",
+        "Uso MaxCube %",
+        "Gap a 100%",
+        "Bitácora",
+        "Nro carga",
+    ]
+
+    columnas_detalle = [c for c in columnas_detalle if c in f.columns]
+
+    st.data_editor(
+        f[columnas_detalle],
+        use_container_width=True,
+        height=550,
         disabled=True
     )
-                              
-    # ==============================
-    # TABLA DETALLE
-    # ==============================
-    #st.subheader("📄 Detalle de despachos")
-    #st.dataframe(f, use_container_width=True, height=520)
 
-    # ==============================
+    # -----------------------------------------
     # DESCARGA
-    # ==============================
+    # -----------------------------------------
     st.download_button(
         "⬇️ Descargar CSV filtrado",
         data=f.to_csv(index=False).encode("utf-8"),
@@ -268,5 +507,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
