@@ -346,12 +346,15 @@ def main():
     df_dest = resumen_por_destino(f)
 
     st.subheader("📋 Resumen por destino")
+    
     st.data_editor(
         df_dest[["Semáforo", "Destino Agencia concat", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
         use_container_width=True,
         disabled=True,
-        height=420
+        height=420,
+        key="tabla_resumen_destino"
     )
+
 
     # -----------------------------------------
     # ALERTAS AUTOMÁTICAS
@@ -386,21 +389,26 @@ def main():
     with col_r1:
         st.markdown("### 🔻 Top 5 peores destinos")
         ranking_peor = df_dest.sort_values("Uso MaxCube %", ascending=True).head(5)
+        
         st.data_editor(
             ranking_peor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
             use_container_width=True,
             height=220,
-            disabled=True
+            disabled=True,
+            key="ranking_peores"
         )
+
 
     with col_r2:
         st.markdown("### 🟢 Top 5 mejores destinos")
         ranking_mejor = df_dest.sort_values("Uso MaxCube %", ascending=False).head(5)
+       
         st.data_editor(
             ranking_mejor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
             use_container_width=True,
             height=220,
-            disabled=True
+            disabled=True,
+            key="ranking_mejores"
         )
 
     # -----------------------------------------
@@ -459,12 +467,15 @@ def main():
 
     if not df_pat.empty:
         st.subheader("🚛 Resumen por patente rampla")
+        
         st.data_editor(
             df_pat[["Semáforo", "Patente rampla", "Destinos", "Proveedores", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
             use_container_width=True,
             height=350,
-            disabled=True
+            disabled=True,
+            key="resumen_patente"
         )
+
 
     # -----------------------------------------
     # DETALLE ORDENADO ASCENDENTE
@@ -487,12 +498,15 @@ def main():
 
     columnas_detalle = [c for c in columnas_detalle if c in f.columns]
 
+    
     st.data_editor(
         f[columnas_detalle],
         use_container_width=True,
         height=550,
-        disabled=True
+        disabled=True,
+        key="detalle_final"
     )
+
 
     # -----------------------------------------
     # DESCARGA
