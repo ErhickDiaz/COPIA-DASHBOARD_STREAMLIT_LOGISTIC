@@ -110,6 +110,8 @@ def cargar_maxcube():
         dayfirst=True,
         errors="coerce"
     )
+    # ✅ Formato visual de fecha (legible)
+    df["Fecha de despacho"] = df["Fecha de despacho"].dt.strftime("%d/%m/%Y")
 
     # Numéricos
     df["Bultos despachados"] = pd.to_numeric(
