@@ -178,7 +178,7 @@ def cargar_maxcube():
     # Año base
     df["Año"] = df["Fecha despacho dt"].dt.year
     
-    def calcular_semana_bimbo(fecha):
+ def calcular_semana_bimbo(fecha):
         if pd.isna(fecha):
             return None
     
@@ -199,7 +199,7 @@ def cargar_maxcube():
         dias = (fecha - primer_jueves).days
         semana = (dias // 7) + 1
     
-        return f"{año}-S{str(semana).zfill(2)}"
+return f"{año}-S{str(semana).zfill(2)}"   
     
     
     df["Año-Semana"] = df["Fecha despacho dt"].apply(calcular_semana_bimbo)
