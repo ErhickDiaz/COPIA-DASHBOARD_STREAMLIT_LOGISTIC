@@ -163,17 +163,41 @@ def cargar_maxcube():
     ).fillna(1)
 
     # -------------------------
-    # Campos temporales
-    # -------------------------
-    df["Fecha"] = df["Fecha despacho dt"].dt.date
-    df["Semana"] = df["Fecha despacho dt"].dt.isocalendar().week.astype("Int64")
-    df["Año-Semana"] = (
-        df["Fecha despacho dt"].dt.isocalendar().year.astype(str)
-        + "-W"
-        + df["Fecha despacho dt"].dt.isocalendar().week.astype(str).str.zfill(2)
-    )
-    df["Mes"] = df["Fecha despacho dt"].dt.strftime("%Y-%m")
-
+    # ==========================
+    # Semana Bimbo (Jueves → Miércoles | numeración propia)
+    # ==========================
+    
+    df["Fecha despacho dt"] = pd.to_datetime(df["Fecha despacho dt"])
+    
+    # Año base
+    df["Año"] = df["Fecha despacho dt"].dt.year
+    
+    def calcular_semana_bimbo(fecha):
+        if pd.isna(fecha):
+            return None
+    
+        año = fecha.year
+    
+        # Buscar primer jueves del año
+        primer_dia = pd.Timestamp(f"{año}-01-01")
+        offset = (3 - primer_dia.weekday()) % 7  # 3 = jueves
+        primer_jueves = primer_dia + pd.Timedelta(days=offset)
+    
+        # Si la fecha es antes del primer jueves → pertenece al año anterior
+        if fecha < primer_jueves:
+            año -= 1
+            primer_dia = pd.Timestamp(f"{año}-01-01")
+            offset = (3 - primer_dia.weekday()) % 7
+            primer_jueves = primer_dia + pd.Timedelta(days=offset)
+    
+        dias = (fecha - primer_jueves).days
+        semana = (dias // 7) + 1
+    
+        return f"{año}-S{str(semana).zfill(2)}"
+    
+    
+    df["Año-Semana"] = df["Fecha despacho dt"].apply(calcular_semana_bimbo)
+   
     # -------------------------
     # -------------------------
     # Capacidad / Uso / Gap
