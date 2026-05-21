@@ -162,6 +162,12 @@ def cargar_maxcube():
         errors="coerce"
     ).fillna(1)
 
+    
+     -------------------------
+    # Campos temporales
+    # -------------------------
+    df["Fecha"] = df["Fecha despacho dt"].dt.date
+
     # -------------------------
     # ==========================
     # Semana Bimbo (Jueves → Miércoles | numeración propia)
