@@ -163,7 +163,7 @@ def cargar_maxcube():
     ).fillna(1)
 
     
-     -------------------------
+    # -------------------------
     # Campos temporales
     # -------------------------
     df["Fecha"] = df["Fecha despacho dt"].dt.date
