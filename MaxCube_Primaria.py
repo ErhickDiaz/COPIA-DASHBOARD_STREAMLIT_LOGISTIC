@@ -313,16 +313,18 @@ def main():
         proveedores = sorted(f["PROVEEDOR"].dropna().astype(str).unique())
         prov_sel = st.multiselect("Proveedor", proveedores)
 
+         patentes_vehiculo = sorted(
+            [p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip() != ""]
+        )
+        
+        pat_veh_sel = st.multiselect("Patente vehículo", patentes_vehiculo)
+        
         patentes = sorted(
             [p for p in f["Patente rampla"].dropna().astype(str).unique() if p.strip() != ""]
         )
         pat_sel = st.multiselect("Patente rampla", patentes)
 
-        patentes_vehiculo = sorted(
-            [p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip() != ""]
-        )
-        
-        pat_veh_sel = st.multiselect("Patente vehículo", patentes_vehiculo)
+       
 
         if destino_sel:
             f = f[f["Destino Agencia concat"].isin(destino_sel)]
