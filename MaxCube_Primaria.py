@@ -313,7 +313,7 @@ def main():
         proveedores = sorted(f["PROVEEDOR"].dropna().astype(str).unique())
         prov_sel = st.multiselect("Proveedor", proveedores)
 
-         patentes_vehiculo = sorted(
+        patentes_vehiculo = sorted(
             [p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip() != ""]
         )
         
