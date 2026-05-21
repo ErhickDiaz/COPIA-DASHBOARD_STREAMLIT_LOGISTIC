@@ -99,7 +99,7 @@ def cargar_maxcube():
         df["Patente rampla"] = ""
 
     if "Patente vehículo" not in df.columns:
-    df["Patente vehículo"] = ""
+        df["Patente vehículo"] = ""
 
     # Fecha + hora real
     df["Fecha de despacho"] = pd.to_datetime(
