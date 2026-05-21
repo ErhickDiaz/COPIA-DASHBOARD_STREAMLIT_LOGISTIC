@@ -77,15 +77,17 @@ def cargar_maxcube():
     df.columns = [c.strip() for c in df.columns]
 
     # Asegurar columnas mínimas
+    
     columnas_esperadas = [
-        "Bitácora",
-        "Nro carga",
-        "Fecha de despacho",
-        "Hora de despacho",
-        "Destino Agencia concat",
-        "PROVEEDOR",
-        "Viajes",
-        "Bultos despachados",
+    "Bitácora",
+    "Nro carga",
+    "Fecha de despacho",
+    "Hora de despacho",
+    "Destino Agencia concat",
+    "PROVEEDOR",
+    "Patente vehículo",   # ✅ NUEVO
+    "Viajes",
+    "Bultos despachados",
     ]
 
     for col in columnas_esperadas:
@@ -95,6 +97,9 @@ def cargar_maxcube():
     # Si no existe patente en el CSV actual, la dejamos vacía
     if "Patente rampla" not in df.columns:
         df["Patente rampla"] = ""
+
+    if "Patente vehículo" not in df.columns:
+    df["Patente vehículo"] = ""
 
     # Fecha + hora real
     df["Fecha de despacho"] = pd.to_datetime(
@@ -484,11 +489,13 @@ def main():
     # -----------------------------------------
     st.subheader("📄 Detalle de despachos (orden ascendente)")
 
+    
     columnas_detalle = [
         "Fecha de despacho",
         "Hora de despacho",
         "Destino Agencia concat",
         "PROVEEDOR",
+        "Patente vehículo",   # ✅ NUEVO
         "Patente rampla",
         "Capacidad 100%",
         "Bultos despachados",
@@ -497,6 +504,7 @@ def main():
         "Bitácora",
         "Nro carga",
     ]
+
 
     columnas_detalle = [c for c in columnas_detalle if c in f.columns]
 
