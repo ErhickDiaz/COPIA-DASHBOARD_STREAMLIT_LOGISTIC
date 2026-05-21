@@ -45,6 +45,26 @@ CAPACIDAD_100_DESTINO = {
 
 PROVEEDOR_CAP_2200 = "76746317-0/TRAILER LOGISTICS SPA"
 
+# =========================================================
+# CAPACIDAD POR PATENTE DE RAMPLA (Solo LO ESPEJO y EL PINAR)
+# =========================================================
+CAPACIDAD_RAMPLA_ESPEJO_PINAR = {
+    "JF4261": 1080,
+    "JG4930": 1280,
+    "JG5632": 1280,
+    "HXDF11": 1280,
+    "HXDF12": 1280,
+    "PWVW35": 1280,
+    "PWVX27": 1280,
+    "KYPH94": 1560,
+    "KYPH95": 1560,
+    "PXJD32": 1560,
+    "PXJD33": 1560,
+    "PXJD34": 1560,
+}
+
+DESTINOS_RAMPLA_RULE = {"LO ESPEJO", "EL PINAR"}
+
 
 # =========================================================
 # GITHUB
@@ -98,6 +118,19 @@ def cargar_maxcube():
     if "Patente rampla" not in df.columns:
         df["Patente rampla"] = ""
 
+    # -------------------------
+    # Normalización patente rampla (para matchear diccionario)
+    # -------------------------
+    df["Patente rampla"] = (
+        df["Patente rampla"]
+        .astype(str)
+        .str.replace('="', '', regex=False)
+        .str.replace('"', '', regex=False)
+        .str.strip()
+        .str.upper()
+    )
+
+
     if "Patente vehículo" not in df.columns:
         df["Patente vehículo"] = ""
 
@@ -144,18 +177,33 @@ def cargar_maxcube():
     # -------------------------
     # Capacidad / Uso / Gap
     # -------------------------
+    
+    # 1) Base por destino (fallback general)
     df["Capacidad 100%"] = df["Destino Agencia concat"].map(CAPACIDAD_100_DESTINO)
-
+    
+    # 2) Override por rampla SOLO para LO ESPEJO y EL PINAR
+    mask_destinos = df["Destino Agencia concat"].astype(str).str.upper().isin(DESTINOS_RAMPLA_RULE)
+    cap_por_rampla = df["Patente rampla"].map(CAPACIDAD_RAMPLA_ESPEJO_PINAR)
+    
+    # Columna de auditoría: de dónde salió la capacidad
+    df["Capacidad fuente"] = "Destino"
+    df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad 100%"] = cap_por_rampla
+    df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad fuente"] = "Rampla"
+    
+    # 3) Override por proveedor (tu regla vigente)
     df.loc[
         df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
         "Capacidad 100%"
     ] = 2200
-
-    df["Uso MaxCube %"] = (
-        df["Bultos despachados"] / df["Capacidad 100%"] * 100
-    ).round(2)
-
+    df.loc[
+        df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
+        "Capacidad fuente"
+    ] = "Proveedor(2200)"
+    
+    # 4) Recalcular KPIs en base a la capacidad final aplicada
+    df["Uso MaxCube %"] = (df["Bultos despachados"] / df["Capacidad 100%"] * 100).round(2)
     df["Gap a 100%"] = df["Capacidad 100%"] - df["Bultos despachados"]
+    
 
     # Orden ascendente base
     df = df.sort_values(
