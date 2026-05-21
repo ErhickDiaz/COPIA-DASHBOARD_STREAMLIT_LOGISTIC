@@ -21,6 +21,7 @@ ZONA_HORARIA = "America/Santiago"
 # =========================================================
 CAPACIDAD_100_DESTINO = {
     "ANTOFAGASTA": 1800,
+    "ARICA": 1800,
     "CHILLAN": 1700,
     "CONCEPCION": 1700,
     "COPIAPO": 1750,
