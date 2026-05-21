@@ -175,35 +175,43 @@ def cargar_maxcube():
     df["Mes"] = df["Fecha despacho dt"].dt.strftime("%Y-%m")
 
     # -------------------------
+    # -------------------------
     # Capacidad / Uso / Gap
     # -------------------------
     
-    # 1) Base por destino (fallback general)
+    # ✅ 1. Capacidad base por destino
     df["Capacidad 100%"] = df["Destino Agencia concat"].map(CAPACIDAD_100_DESTINO)
     
-    # 2) Override por rampla SOLO para LO ESPEJO y EL PINAR
+    # ✅ 2. Normalizar patente rampla
+    df["Patente rampla"] = (
+        df["Patente rampla"]
+        .astype(str)
+        .str.replace('="', '', regex=False)
+        .str.replace('"', '', regex=False)
+        .str.strip()
+        .str.upper()
+    )
+    
+    # ✅ 3. Override por rampla SOLO ESPEJO / PINAR
     mask_destinos = df["Destino Agencia concat"].astype(str).str.upper().isin(DESTINOS_RAMPLA_RULE)
+    
     cap_por_rampla = df["Patente rampla"].map(CAPACIDAD_RAMPLA_ESPEJO_PINAR)
     
-    # Columna de auditoría: de dónde salió la capacidad
-    df["Capacidad fuente"] = "Destino"
     df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad 100%"] = cap_por_rampla
-    df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad fuente"] = "Rampla"
     
-    # 3) Override por proveedor (tu regla vigente)
+    # ✅ 4. Override por proveedor (2200)
     df.loc[
         df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
         "Capacidad 100%"
     ] = 2200
-    df.loc[
-        df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
-        "Capacidad fuente"
-    ] = "Proveedor(2200)"
     
-    # 4) Recalcular KPIs en base a la capacidad final aplicada
-    df["Uso MaxCube %"] = (df["Bultos despachados"] / df["Capacidad 100%"] * 100).round(2)
+    # ✅ 5. Calcular KPI FINAL (ya con capacidad real)
+    df["Uso MaxCube %"] = (
+        df["Bultos despachados"] / df["Capacidad 100%"] * 100
+    ).round(2)
+    
     df["Gap a 100%"] = df["Capacidad 100%"] - df["Bultos despachados"]
-    
+        
 
     # Orden ascendente base
     df = df.sort_values(
