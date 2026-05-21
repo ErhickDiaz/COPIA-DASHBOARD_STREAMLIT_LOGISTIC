@@ -537,18 +537,18 @@ def main():
     # -----------------------------------------
     # RESUMEN POR PATENTE (solo si existe)
     # -----------------------------------------
-    df_pat = resumen_por_patente(f)
+    #df_pat = resumen_por_patente(f)
 
-    if not df_pat.empty:
-        st.subheader("🚛 Resumen por patente rampla")
+    #if not df_pat.empty:
+       # st.subheader("🚛 Resumen por patente rampla")
         
-        st.data_editor(
-            df_pat[["Semáforo", "Patente rampla", "Destinos", "Proveedores", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
-            use_container_width=True,
-            height=350,
-            disabled=True,
-            key="resumen_patente"
-        )
+    #    st.data_editor(
+     #       df_pat[["Semáforo", "Patente rampla", "Destinos", "Proveedores", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
+    #        use_container_width=True,
+    #        height=350,
+    #        disabled=True,
+     #       key="resumen_patente"
+    #    )
 
 
     # -----------------------------------------
