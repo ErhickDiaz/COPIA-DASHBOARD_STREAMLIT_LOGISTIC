@@ -318,12 +318,21 @@ def main():
         )
         pat_sel = st.multiselect("Patente rampla", patentes)
 
+        patentes_vehiculo = sorted(
+            [p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip() != ""]
+        )
+        
+        pat_veh_sel = st.multiselect("Patente vehículo", patentes_vehiculo)
+
         if destino_sel:
             f = f[f["Destino Agencia concat"].isin(destino_sel)]
 
         if prov_sel:
             f = f[f["PROVEEDOR"].isin(prov_sel)]
 
+        if pat_veh_sel:
+            f = f[f["Patente vehículo"].isin(pat_veh_sel)]
+            
         if pat_sel:
             f = f[f["Patente rampla"].isin(pat_sel)]
 
