@@ -29,7 +29,7 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 📊 Tablero Estratégico MaxCube Primaria")
+    st.markdown("### 📊 Nacional | Tablero Estratégico de Gestión Distribución Primaria | Resumen")
 
     # ───── CARGA DE DATOS ─────
     # 👉 aquí debes apuntar a tu CSV de GitHub o local
