@@ -335,7 +335,13 @@ def metricas_globales(f):
     total_destinos = f["Destino Agencia concat"].nunique()
     total_capacidad = pd.to_numeric(f["Capacidad 100%"], errors="coerce").fillna(0).sum()
 
-    uso_global = round((total_bultos / total_capacidad * 100), 2) if total_capacidad > 0 else 0
+    
+    # ✅ limitar cada fila a 100%
+    f["Uso MaxCube Capado"] = f["Uso MaxCube %"].clip(upper=100)
+    
+    # ✅ promedio real sin sobrepasar 100
+    uso_global = round(f["Uso MaxCube Capado"].mean(), 2) if not f.empty else 0
+
     total_gap = pd.to_numeric(f["Gap a 100%"], errors="coerce").fillna(0).sum()
 
     return total_bultos, total_viajes, total_destinos, uso_global, total_gap
