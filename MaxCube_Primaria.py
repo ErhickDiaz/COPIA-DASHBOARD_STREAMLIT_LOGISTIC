@@ -330,13 +330,23 @@ def metricas_globales(f):
     if f.empty:
         return 0, 0, 0, 0, 0
 
-    total_bultos = f["Bultos despachados"].sum()
     total_viajes = f["Viajes"].sum()
     total_destinos = f["Destino Agencia concat"].nunique()
+
+    # ✅ Bultos reales
+    total_bultos = f["Bultos despachados"].sum()
+
+    # ✅ Capacidad total
     total_capacidad = pd.to_numeric(f["Capacidad 100%"], errors="coerce").fillna(0).sum()
 
-    # ✅ KPI REAL
-    uso_global = round((total_bultos / total_capacidad) * 100, 2) if total_capacidad > 0 else 0
+    # ✅ NUEVO: bultos capados (máximo = capacidad)
+    f_aux = f.copy()
+    f_aux["Bultos capados"] = f_aux[["Bultos despachados", "Capacidad 100%"]].min(axis=1)
+
+    # ✅ KPI CONTROLADO (tu idea)
+    uso_global = round(
+        (f_aux["Bultos capados"].sum() / total_capacidad) * 100, 2
+    ) if total_capacidad > 0 else 0
 
     total_gap = pd.to_numeric(f["Gap a 100%"], errors="coerce").fillna(0).sum()
 
