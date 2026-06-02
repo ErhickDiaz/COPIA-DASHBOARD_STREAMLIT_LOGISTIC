@@ -332,30 +332,35 @@ def metricas_globales(f):
 
     f_aux = f.copy()
 
-    # Numéricos seguros
-    f_aux["Bultos_num"] = pd.to_numeric(f_aux["Bultos despachados"], errors="coerce").fillna(0)
-    f_aux["Capacidad_num"] = pd.to_numeric(f_aux["Capacidad 100%"], errors="coerce")
+    # numéricos seguros
+    f_aux["Bultos"] = pd.to_numeric(f_aux["Bultos despachados"], errors="coerce").fillna(0)
+    f_aux["Capacidad"] = pd.to_numeric(f_aux["Capacidad 100%"], errors="coerce")
 
-    total_bultos = f_aux["Bultos_num"].sum()
+    total_bultos = f_aux["Bultos"].sum()
     total_viajes = pd.to_numeric(f_aux["Viajes"], errors="coerce").fillna(0).sum()
     total_destinos = f_aux["Destino Agencia concat"].nunique()
 
-    # ✅ Solo filas con capacidad válida participan en el KPI global
-    f_valid = f_aux[f_aux["Capacidad_num"].notna() & (f_aux["Capacidad_num"] > 0)].copy()
+    # ✅ SOLO filas válidas
+    f_valid = f_aux[
+        (f_aux["Capacidad"].notna()) &
+        (f_aux["Capacidad"] > 0)
+    ].copy()
 
     if f_valid.empty:
         uso_global = 0
     else:
-        # ✅ Capa solo para el KPI global
-        f_valid["Bultos capados"] = f_valid[["Bultos_num", "Capacidad_num"]].min(axis=1)
+        # ✅ capado correcto
+        f_valid["Bultos capados"] = f_valid[["Bultos", "Capacidad"]].min(axis=1)
+
         uso_global = round(
-            (f_valid["Bultos capados"].sum() / f_valid["Capacidad_num"].sum()) * 100,
+            (f_valid["Bultos capados"].sum() / f_valid["Capacidad"].sum()) * 100,
             2
         )
 
     total_gap = pd.to_numeric(f_aux["Gap a 100%"], errors="coerce").fillna(0).sum()
 
     return total_bultos, total_viajes, total_destinos, uso_global, total_gap
+
 
 
 
