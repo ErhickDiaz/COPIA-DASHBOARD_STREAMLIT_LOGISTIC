@@ -235,10 +235,16 @@ def cargar_maxcube():
         .str.replace(r"\s+", " ", regex=True)
         .str.replace(r"\s*/\s*", " / ", regex=True)
     )
+    df["Destino Agencia concat"] = df["Destino Agencia concat"].apply(normalizar_destino)
+    df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
 
 
     # ✅ 1. Capacidad base por destino
     def obtener_capacidad(destino):
+        destino_norm = normalizar_destino(destino)
+        return CAPACIDAD_100_DESTINO.get(destino_norm)
+    
+       def normalizar_destino(destino):
         destino = (
             str(destino)
             .upper()
@@ -246,10 +252,17 @@ def cargar_maxcube():
             .strip()
         )
     
-        destino = " / ".join(sorted([p.strip() for p in destino.split("/")]))
+        partes = [p.strip() for p in destino.split("/")]
+    
+        partes = sorted(partes)
+    
+        destino_normalizado = " / ".join(partes)
+    
+        return destino_normalizado
         
-        return CAPACIDAD_100_DESTINO.get(destino)
-
+        
+    df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
+    
     faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].unique()
 
     print("🚨 DESTINOS SIN MATCH REAL:")
@@ -257,7 +270,7 @@ def cargar_maxcube():
         print(f"[{repr(d)}]")
 
     
-    df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
+    
     # ✅ 2. Normalizar patente rampla
     df["Patente rampla"] = (
         df["Patente rampla"]
