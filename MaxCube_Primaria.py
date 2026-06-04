@@ -63,7 +63,7 @@ CAPACIDAD_100_DESTINO = {
     "VINA DEL MAR": 1664,
 }
 CAPACIDAD_100_DESTINO = {
-    k.strip().upper().replace("/", " / "): v
+    k.strip().upper().replace("\xa0", " ").replace("/", " / "): v
     for k, v in CAPACIDAD_100_DESTINO.items()
 }
 
@@ -231,13 +231,16 @@ def cargar_maxcube():
         .astype(str)
         .str.upper()
         .str.strip()
-        .str.replace(r"\s+", " ", regex=True)           # limpia dobles espacios
-        .str.replace(r"\s*/\s*", " / ", regex=True)      # normaliza slash
+        .str.replace(r"\s+", " ", regex=True)
+        .str.replace("\xa0", " ", regex=False)   # 🔥 clave (espacios invisibles)
+        .str.replace(r"\s*/\s*", " / ", regex=True)
     )
 
     # ✅ 1. Capacidad base por destino
     df["Capacidad 100%"] = df["Destino Agencia concat"].map(CAPACIDAD_100_DESTINO)
-    
+    df["Capacidad 100%"] = df["Capacidad 100%"].fillna(
+        df["Destino Agencia concat"].apply(lambda x: CAPACIDAD_100_DESTINO.get(x.strip()))
+    )
     # ✅ 2. Normalizar patente rampla
     df["Patente rampla"] = (
         df["Patente rampla"]
@@ -277,7 +280,11 @@ def cargar_maxcube():
 
     return df
 
-
+    test = df[df["Destino Agencia concat"].str.contains("LV", na=False)][
+        ["Destino Agencia concat", "Capacidad 100%"]
+    ]
+    
+    print(test.drop_duplicates())
 # =========================================================
 # AUXILIARES
 # =========================================================
