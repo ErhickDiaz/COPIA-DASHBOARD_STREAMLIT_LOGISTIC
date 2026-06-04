@@ -60,6 +60,11 @@ CAPACIDAD_100_DESTINO = {
     "VALDIVIA": 1800,
     "VINA DEL MAR": 1664,
 }
+CAPACIDAD_100_DESTINO = {
+    k.strip().upper().replace("/", " / "): v
+    for k, v in CAPACIDAD_100_DESTINO.items()
+}
+
 
 PROVEEDOR_CAP_2200 = "76746317-0/TRAILER LOGISTICS SPA"
 
@@ -219,7 +224,15 @@ def cargar_maxcube():
     # -------------------------
     # Capacidad / Uso / Gap
     # -------------------------
-    
+    df["Destino Agencia concat"] = (
+        df["Destino Agencia concat"]
+        .astype(str)
+        .str.upper()
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)           # limpia dobles espacios
+        .str.replace(r"\s*/\s*", " / ", regex=True)      # normaliza slash
+    )
+
     # ✅ 1. Capacidad base por destino
     df["Capacidad 100%"] = df["Destino Agencia concat"].map(CAPACIDAD_100_DESTINO)
     
