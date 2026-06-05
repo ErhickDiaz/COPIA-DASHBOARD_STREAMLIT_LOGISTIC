@@ -317,7 +317,18 @@ def cargar_maxcube():
     faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].dropna().unique()
     if len(faltantes) > 0:
         st.warning("⚠️ Sin capacidad: " + str(faltantes))
-        
+
+    # DEBUG COMPLETO - quitar después
+    st.subheader("🔍 DEBUG Capacidad")
+    debug_df = df[["Destino Agencia concat", "Capacidad 100%", "Bultos despachados", "Gap a 100%"]].copy()
+    debug_df = debug_df[debug_df["Capacidad 100%"].fillna(0) == 0]  # solo los problemáticos
+    if not debug_df.empty:
+        st.dataframe(debug_df)
+        st.write("Destinos con capacidad 0 o nula:", debug_df["Destino Agencia concat"].unique().tolist())
+    else:
+        st.success("✅ Todos los destinos tienen capacidad asignada correctamente")
+
+    
     return df
 # =========================================================
 # AUXILIARES
