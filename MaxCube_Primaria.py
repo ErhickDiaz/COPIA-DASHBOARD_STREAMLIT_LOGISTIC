@@ -28,7 +28,6 @@ CAPACIDAD_100_DESTINO = {
     "IQUIQUE": 1800,
     "LA SERENA": 1700,
     "LA SERENA / RUTA SOLITARIA 1059 LV": 1750,
-    "RUTA SOLITARIA 1059 LV / LA SERENA": 1750,
     "RUTA SOLITARIA 1059 LV": 1750,
     "LO ESPEJO": 1560,
     "LOS ANDES": 1560,
@@ -37,7 +36,6 @@ CAPACIDAD_100_DESTINO = {
     "OSORNO": 1800,
     "PTO MONTT": 1800,
     "PTO MONTT / RUTA SOLITARIA ELPAC": 1800,
-    "RUTA SOLITARIA ELPAC / PTO MONTT": 1800,
     "RUTA SOLITARIA ELPAC": 1800,
     "COPIAPO / LA SERENA": 1750,
     "LOS ANGELES / TEMUCO": 1750,
@@ -53,6 +51,7 @@ CAPACIDAD_100_DESTINO = {
     "ANTOFAGASTA / IQUIQUE": 1750,
     "ANTOFAGASTA / ARICA": 1750,
     "ANTOFAGASTA / ARICA / IQUIQUE": 1750,
+    "ANTOFAGASTA / TALCA": 1750,
     "CONCEPCION / LOS ANGELES": 1750,
     "CONCEPCION / TEMUCO": 1750,
     "RANCAGUA": 1700,
@@ -97,15 +96,24 @@ def normalizar_destino(destino):
     )
     destino = " ".join(destino.split())
     partes = [p.strip() for p in destino.split("/") if p.strip()]
-    partes = sorted(partes)
     return " / ".join(partes)
 
 
 def obtener_capacidad(destino):
     destino_norm = normalizar_destino(destino)
-    for clave, valor in CAPACIDAD_100_DESTINO.items():
-        if normalizar_destino(clave) == destino_norm:
-            return valor
+
+    # Búsqueda directa
+    if destino_norm in CAPACIDAD_100_DESTINO:
+        return CAPACIDAD_100_DESTINO[destino_norm]
+
+    # Búsqueda rotando el orden de las partes (A/B → B/A, A/B/C → B/C/A, etc.)
+    partes = [p.strip() for p in destino_norm.split("/") if p.strip()]
+    for i in range(len(partes)):
+        rotado = partes[i:] + partes[:i]
+        clave = " / ".join(rotado)
+        if clave in CAPACIDAD_100_DESTINO:
+            return CAPACIDAD_100_DESTINO[clave]
+
     return None
 
 
@@ -157,7 +165,8 @@ def cargar_maxcube():
 
     columnas_esperadas = [
         "Bitácora", "Nro carga", "Fecha de despacho", "Hora de despacho",
-        "Destino Agencia concat", "PROVEEDOR", "Patente vehículo", "Viajes", "Bultos despachados",
+        "Destino Agencia concat", "PROVEEDOR", "Patente vehículo",
+        "Viajes", "Bultos despachados",
     ]
     for col in columnas_esperadas:
         if col not in df.columns:
@@ -203,7 +212,7 @@ def cargar_maxcube():
     df["Destino Agencia concat"] = df["Destino Agencia concat"].apply(normalizar_destino)
     df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
 
-    # Override rampla
+    # Override rampla (solo LO ESPEJO y EL PINAR)
     mask_destinos = df["Destino Agencia concat"].isin(DESTINOS_RAMPLA_RULE)
     cap_por_rampla = df["Patente rampla"].map(CAPACIDAD_RAMPLA_ESPEJO_PINAR)
     df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad 100%"] = cap_por_rampla
@@ -294,28 +303,6 @@ def main():
     if df.empty:
         st.warning("El archivo MAXCUBE no contiene registros.")
         return
-
-    # =========================================================
-    # DEBUG TEMPORAL - borrar cuando esté resuelto
-    # =========================================================
-    with st.expander("🔍 DEBUG - Capacidad por destino (borrar después)", expanded=True):
-        debug_df = (
-            df[["Destino Agencia concat", "Capacidad 100%", "Bultos despachados", "Gap a 100%"]]
-            .drop_duplicates("Destino Agencia concat")
-            .sort_values("Destino Agencia concat")
-        )
-        st.dataframe(debug_df, use_container_width=True)
-
-        sin_cap = debug_df[debug_df["Capacidad 100%"].isna()]
-        cap_cero = debug_df[debug_df["Capacidad 100%"].fillna(0) == 0]
-
-        if not sin_cap.empty:
-            st.error("❌ Destinos SIN capacidad (NaN): " + str(sin_cap["Destino Agencia concat"].tolist()))
-        if not cap_cero.empty:
-            st.warning("⚠️ Destinos con capacidad = 0: " + str(cap_cero["Destino Agencia concat"].tolist()))
-        if sin_cap.empty and cap_cero.empty:
-            st.success("✅ Todos los destinos tienen capacidad correcta")
-    # =========================================================
 
     # SIDEBAR
     with st.sidebar:
