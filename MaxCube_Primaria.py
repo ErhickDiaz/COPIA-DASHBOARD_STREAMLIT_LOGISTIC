@@ -313,6 +313,11 @@ def cargar_maxcube():
     # También imprime cómo quedaron las claves del diccionario
     print("CLAVES DICT:", list(CAPACIDAD_100_DESTINO.keys()))  
 
+     # DEBUG - quitar después
+    faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].dropna().unique()
+    if len(faltantes) > 0:
+        st.warning("⚠️ Sin capacidad: " + str(faltantes))
+        
     return df
 # =========================================================
 # AUXILIARES
