@@ -62,12 +62,6 @@ CAPACIDAD_100_DESTINO = {
     "VINA DEL MAR": 1664,
 }
 
-# Normalización inicial del diccionario
-CAPACIDAD_100_DESTINO = {
-    " / ".join(sorted([p.strip().upper().replace("\xa0", " ") for p in k.split("/")])): v
-    for k, v in CAPACIDAD_100_DESTINO.items()
-}
-
 PROVEEDOR_CAP_2200 = "76746317-0/TRAILER LOGISTICS SPA"
 
 # =========================================================
@@ -113,7 +107,11 @@ def normalizar_destino(destino):
 
 def obtener_capacidad(destino):
     destino_norm = normalizar_destino(destino)
-    return CAPACIDAD_100_DESTINO.get(destino_norm)
+    # Busca normalizando también las claves del dict
+    for clave, valor in CAPACIDAD_100_DESTINO.items():
+        if normalizar_destino(clave) == destino_norm:
+            return valor
+    return None
 
 
 # =========================================================
@@ -306,6 +304,12 @@ def cargar_maxcube():
     )
 
     return df
+    # DEBUG TEMPORAL
+    faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].unique()
+    print("SIN CAPACIDAD:", faltantes)
+    
+    # También imprime cómo quedaron las claves del diccionario
+    print("CLAVES DICT:", list(CAPACIDAD_100_DESTINO.keys()))  
 
 
 # =========================================================
