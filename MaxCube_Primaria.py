@@ -6,7 +6,6 @@ from datetime import datetime
 import pytz
 import plotly.express as px
 
-
 # =========================================================
 # CONFIG
 # =========================================================
@@ -62,11 +61,12 @@ CAPACIDAD_100_DESTINO = {
     "VALDIVIA": 1800,
     "VINA DEL MAR": 1664,
 }
+
+# Normalización inicial del diccionario
 CAPACIDAD_100_DESTINO = {
-    k.strip().upper().replace("\xa0", " ").replace("/", " / "): v
+    " / ".join(sorted([p.strip().upper().replace("\xa0", " ") for p in k.split("/")])): v
     for k, v in CAPACIDAD_100_DESTINO.items()
 }
-
 
 PROVEEDOR_CAP_2200 = "76746317-0/TRAILER LOGISTICS SPA"
 
@@ -90,6 +90,31 @@ CAPACIDAD_RAMPLA_ESPEJO_PINAR = {
 
 DESTINOS_RAMPLA_RULE = {"LO ESPEJO", "EL PINAR"}
 
+# =========================================================
+# NORMALIZACIÓN / CAPACIDAD
+# =========================================================
+def normalizar_destino(destino):
+    destino = (
+        str(destino)
+        .upper()
+        .replace("\xa0", " ")
+        .strip()
+    )
+
+    # limpia espacios dobles
+    destino = " ".join(destino.split())
+
+    # separa por slash, limpia y ordena
+    partes = [p.strip() for p in destino.split("/") if p.strip()]
+    partes = sorted(partes)
+
+    return " / ".join(partes)
+
+
+def obtener_capacidad(destino):
+    destino_norm = normalizar_destino(destino)
+    return CAPACIDAD_100_DESTINO.get(destino_norm)
+
 
 # =========================================================
 # GITHUB
@@ -102,6 +127,7 @@ def leer_csv_github(repo, filename):
     except Exception as e:
         st.error(f"No se pudo cargar {filename} desde GitHub: {e}")
         return pd.DataFrame()
+
 
 # =========================================================
 # SEMANA BIMBO (Jueves → Miércoles)
@@ -126,7 +152,7 @@ def calcular_semana_bimbo(fecha):
     semana = (dias // 7) + 1
 
     return f"{año}-S{str(semana).zfill(2)}"
-    
+
 
 # =========================================================
 # CARGA Y ENRIQUECIMIENTO
@@ -145,30 +171,27 @@ def cargar_maxcube():
     # -------------------------
     df.columns = [c.strip() for c in df.columns]
 
-    # Asegurar columnas mínimas
-    
     columnas_esperadas = [
-    "Bitácora",
-    "Nro carga",
-    "Fecha de despacho",
-    "Hora de despacho",
-    "Destino Agencia concat",
-    "PROVEEDOR",
-    "Patente vehículo",   # ✅ NUEVO
-    "Viajes",
-    "Bultos despachados",
+        "Bitácora",
+        "Nro carga",
+        "Fecha de despacho",
+        "Hora de despacho",
+        "Destino Agencia concat",
+        "PROVEEDOR",
+        "Patente vehículo",
+        "Viajes",
+        "Bultos despachados",
     ]
 
     for col in columnas_esperadas:
         if col not in df.columns:
             df[col] = ""
 
-    # Si no existe patente en el CSV actual, la dejamos vacía
     if "Patente rampla" not in df.columns:
         df["Patente rampla"] = ""
 
     # -------------------------
-    # Normalización patente rampla (para matchear diccionario)
+    # Patentes
     # -------------------------
     df["Patente rampla"] = (
         df["Patente rampla"]
@@ -179,28 +202,38 @@ def cargar_maxcube():
         .str.upper()
     )
 
+    df["Patente vehículo"] = (
+        df["Patente vehículo"]
+        .astype(str)
+        .str.replace('="', '', regex=False)
+        .str.replace('"', '', regex=False)
+        .str.strip()
+        .str.upper()
+    )
 
-    if "Patente vehículo" not in df.columns:
-        df["Patente vehículo"] = ""
-
+    # -------------------------
     # Fecha + hora real
+    # -------------------------
     df["Fecha de despacho"] = pd.to_datetime(
         df["Fecha de despacho"],
         dayfirst=True,
         errors="coerce"
     )
 
-    df["Hora de despacho"] = df["Hora de despacho"].astype(str)
+    df["Hora de despacho"] = df["Hora de despacho"].astype(str).str.strip()
 
     df["Fecha despacho dt"] = pd.to_datetime(
         df["Fecha de despacho"].dt.strftime("%d/%m/%Y") + " " + df["Hora de despacho"],
         dayfirst=True,
         errors="coerce"
     )
-    # ✅ Formato visual de fecha (legible)
+
+    # Visual
     df["Fecha de despacho"] = df["Fecha de despacho"].dt.strftime("%d/%m/%Y")
 
+    # -------------------------
     # Numéricos
+    # -------------------------
     df["Bultos despachados"] = pd.to_numeric(
         df["Bultos despachados"],
         errors="coerce"
@@ -211,98 +244,62 @@ def cargar_maxcube():
         errors="coerce"
     ).fillna(1)
 
-    
     # -------------------------
     # Campos temporales
     # -------------------------
     df["Fecha"] = df["Fecha despacho dt"].dt.date
-    
     df["Año-Semana"] = df["Fecha despacho dt"].apply(calcular_semana_bimbo)
-    
     df["Mes"] = df["Fecha despacho dt"].dt.strftime("%Y-%m")
-    
-      
+
     # -------------------------
-    # -------------------------
-    # Capacidad / Uso / Gap
+    # Destino / capacidad base
     # -------------------------
     df["Destino Agencia concat"] = (
         df["Destino Agencia concat"]
         .astype(str)
         .str.upper()
-        .str.replace("\xa0", " ", regex=False)   # 🔥 ESTE ES EL QUE TE FALTA
+        .str.replace("\xa0", " ", regex=False)
         .str.strip()
         .str.replace(r"\s+", " ", regex=True)
         .str.replace(r"\s*/\s*", " / ", regex=True)
     )
+
     df["Destino Agencia concat"] = df["Destino Agencia concat"].apply(normalizar_destino)
     df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
 
+    # Debug real de faltantes
+    faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].dropna().unique()
+    if len(faltantes) > 0:
+        print("🚨 DESTINOS SIN MATCH REAL:")
+        for d in faltantes:
+            print(f"[{repr(d)}]")
 
-    # ✅ 1. Capacidad base por destino
-    def obtener_capacidad(destino):
-        destino_norm = normalizar_destino(destino)
-        return CAPACIDAD_100_DESTINO.get(destino_norm)
-    
-       def normalizar_destino(destino):
-        destino = (
-            str(destino)
-            .upper()
-            .replace("\xa0", " ")
-            .strip()
-        )
-    
-        partes = [p.strip() for p in destino.split("/")]
-    
-        partes = sorted(partes)
-    
-        destino_normalizado = " / ".join(partes)
-    
-        return destino_normalizado
-        
-        
-    df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
-    
-    faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].unique()
-
-    print("🚨 DESTINOS SIN MATCH REAL:")
-    for d in faltantes:
-        print(f"[{repr(d)}]")
-
-    
-    
-    # ✅ 2. Normalizar patente rampla
-    df["Patente rampla"] = (
-        df["Patente rampla"]
-        .astype(str)
-        .str.replace('="', '', regex=False)
-        .str.replace('"', '', regex=False)
-        .str.strip()
-        .str.upper()
-    )
-    
-    # ✅ 3. Override por rampla SOLO ESPEJO / PINAR
-    mask_destinos = df["Destino Agencia concat"].astype(str).str.upper().isin(DESTINOS_RAMPLA_RULE)
-    
+    # -------------------------
+    # Override por rampla SOLO ESPEJO / PINAR
+    # -------------------------
+    mask_destinos = df["Destino Agencia concat"].isin(DESTINOS_RAMPLA_RULE)
     cap_por_rampla = df["Patente rampla"].map(CAPACIDAD_RAMPLA_ESPEJO_PINAR)
-    
+
     df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad 100%"] = cap_por_rampla
-    
-    # ✅ 4. Override por proveedor (2200)
+
+    # -------------------------
+    # Override por proveedor 2200
+    # -------------------------
     df.loc[
         df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
         "Capacidad 100%"
     ] = 2200
-    
-    # ✅ 5. Calcular KPI FINAL (ya con capacidad real)
+
+    # -------------------------
+    # KPI
+    # -------------------------
     df["Uso MaxCube %"] = (
         df["Bultos despachados"] / df["Capacidad 100%"] * 100
     ).round(2)
-    
-    df["Gap a 100%"] = df["Capacidad 100%"] - df["Bultos despachados"]
-        
 
-    # Orden ascendente base
+    df["Gap a 100%"] = df["Capacidad 100%"] - df["Bultos despachados"]
+
+    # Orden base
     df = df.sort_values(
         ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
         ascending=[True, True, True, True]
@@ -310,11 +307,7 @@ def cargar_maxcube():
 
     return df
 
-    test = df[df["Destino Agencia concat"].str.contains("LV", na=False)][
-        ["Destino Agencia concat", "Capacidad 100%"]
-    ]
-    
-    print(test.drop_duplicates())
+
 # =========================================================
 # AUXILIARES
 # =========================================================
@@ -348,7 +341,6 @@ def resumen_por_destino(f):
     ).round(2)
 
     resumen["Semáforo"] = resumen["Uso MaxCube %"].apply(semaforo)
-
     resumen = resumen.sort_values("Uso MaxCube %", ascending=True)
     return resumen
 
@@ -366,8 +358,12 @@ def resumen_por_patente(f):
     resumen = (
         f_pat.groupby("Patente rampla", as_index=False)
         .agg(
-            Destinos=("Destino Agencia concat", lambda x: " / ".join(sorted(set([str(v) for v in x if pd.notna(v) and str(v).strip() != ""])))),
-            Proveedores=("PROVEEDOR", lambda x: " / ".join(sorted(set([str(v) for v in x if pd.notna(v) and str(v).strip() != ""])))),
+            Destinos=("Destino Agencia concat", lambda x: " / ".join(sorted(set(
+                [str(v) for v in x if pd.notna(v) and str(v).strip() != ""]
+            )))),
+            Proveedores=("PROVEEDOR", lambda x: " / ".join(sorted(set(
+                [str(v) for v in x if pd.notna(v) and str(v).strip() != ""]
+            )))),
             Bultos=("Bultos despachados", "sum"),
             Viajes=("Viajes", "sum"),
             Capacidad=("Capacidad 100%", "sum"),
@@ -391,7 +387,6 @@ def metricas_globales(f):
 
     f_aux = f.copy()
 
-    # numéricos seguros
     f_aux["Bultos"] = pd.to_numeric(f_aux["Bultos despachados"], errors="coerce").fillna(0)
     f_aux["Capacidad"] = pd.to_numeric(f_aux["Capacidad 100%"], errors="coerce")
 
@@ -399,7 +394,6 @@ def metricas_globales(f):
     total_viajes = pd.to_numeric(f_aux["Viajes"], errors="coerce").fillna(0).sum()
     total_destinos = f_aux["Destino Agencia concat"].nunique()
 
-    # ✅ SOLO filas válidas
     f_valid = f_aux[
         (f_aux["Capacidad"].notna()) &
         (f_aux["Capacidad"] > 0)
@@ -408,9 +402,7 @@ def metricas_globales(f):
     if f_valid.empty:
         uso_global = 0
     else:
-        # ✅ capado correcto
         f_valid["Bultos capados"] = f_valid[["Bultos", "Capacidad"]].min(axis=1)
-
         uso_global = round(
             (f_valid["Bultos capados"].sum() / f_valid["Capacidad"].sum()) * 100,
             2
@@ -419,8 +411,6 @@ def metricas_globales(f):
     total_gap = pd.to_numeric(f_aux["Gap a 100%"], errors="coerce").fillna(0).sum()
 
     return total_bultos, total_viajes, total_destinos, uso_global, total_gap
-
-
 
 
 # =========================================================
@@ -488,15 +478,12 @@ def main():
         patentes_vehiculo = sorted(
             [p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip() != ""]
         )
-        
         pat_veh_sel = st.multiselect("Patente vehículo", patentes_vehiculo)
-        
+
         patentes = sorted(
             [p for p in f["Patente rampla"].dropna().astype(str).unique() if p.strip() != ""]
         )
         pat_sel = st.multiselect("Patente rampla", patentes)
-
-       
 
         if destino_sel:
             f = f[f["Destino Agencia concat"].isin(destino_sel)]
@@ -506,18 +493,18 @@ def main():
 
         if pat_veh_sel:
             f = f[f["Patente vehículo"].isin(pat_veh_sel)]
-            
+
         if pat_sel:
             f = f[f["Patente rampla"].isin(pat_sel)]
 
-    # Orden definitivo del filtrado
+    # Orden final
     f = f.sort_values(
         ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
         ascending=[True, True, True, True]
     )
 
     # -----------------------------------------
-    # KPIS
+    # KPIs
     # -----------------------------------------
     total_bultos, total_viajes, total_destinos, uso_global, total_gap = metricas_globales(f)
 
@@ -531,12 +518,11 @@ def main():
     st.divider()
 
     # -----------------------------------------
-    # RESUMEN POR DESTINO (VISUAL PRINCIPAL)
+    # RESUMEN POR DESTINO
     # -----------------------------------------
     df_dest = resumen_por_destino(f)
 
     st.subheader("📋 Resumen por destino")
-    
     st.data_editor(
         df_dest[["Semáforo", "Destino Agencia concat", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
         use_container_width=True,
@@ -544,7 +530,6 @@ def main():
         height=420,
         key="tabla_resumen_destino"
     )
-
 
     # -----------------------------------------
     # ALERTAS AUTOMÁTICAS
@@ -570,7 +555,7 @@ def main():
             )
 
     # -----------------------------------------
-    # RANKING AUTOMÁTICO
+    # RANKING
     # -----------------------------------------
     st.subheader("🏆 Ranking automático")
 
@@ -579,7 +564,7 @@ def main():
     with col_r1:
         st.markdown("### 🔻 Top 5 peores destinos")
         ranking_peor = df_dest.sort_values("Uso MaxCube %", ascending=True).head(5)
-        
+
         st.data_editor(
             ranking_peor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
             use_container_width=True,
@@ -588,11 +573,10 @@ def main():
             key="ranking_peores"
         )
 
-
     with col_r2:
         st.markdown("### 🟢 Top 5 mejores destinos")
         ranking_mejor = df_dest.sort_values("Uso MaxCube %", ascending=False).head(5)
-       
+
         st.data_editor(
             ranking_mejor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
             use_container_width=True,
@@ -602,7 +586,7 @@ def main():
         )
 
     # -----------------------------------------
-    # VISUAL 1 - Uso MaxCube % por destino
+    # VISUAL 1
     # -----------------------------------------
     st.subheader("📊 Uso MaxCube % por destino")
 
@@ -628,7 +612,7 @@ def main():
     st.plotly_chart(fig_uso, use_container_width=True)
 
     # -----------------------------------------
-    # VISUAL 2 - Gap a 100% por destino
+    # VISUAL 2
     # -----------------------------------------
     st.subheader("📉 Gap a 100% por destino")
 
@@ -651,34 +635,16 @@ def main():
     st.plotly_chart(fig_gap, use_container_width=True)
 
     # -----------------------------------------
-    # RESUMEN POR PATENTE (solo si existe)
-    # -----------------------------------------
-    #df_pat = resumen_por_patente(f)
-
-    #if not df_pat.empty:
-       # st.subheader("🚛 Resumen por patente rampla")
-        
-    #    st.data_editor(
-     #       df_pat[["Semáforo", "Patente rampla", "Destinos", "Proveedores", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
-    #        use_container_width=True,
-    #        height=350,
-    #        disabled=True,
-     #       key="resumen_patente"
-    #    )
-
-
-    # -----------------------------------------
-    # DETALLE ORDENADO ASCENDENTE
+    # DETALLE
     # -----------------------------------------
     st.subheader("📄 Detalle de despachos (orden ascendente)")
 
-    
     columnas_detalle = [
         "Fecha de despacho",
         "Hora de despacho",
         "Destino Agencia concat",
         "PROVEEDOR",
-        "Patente vehículo",   # ✅ NUEVO
+        "Patente vehículo",
         "Patente rampla",
         "Capacidad 100%",
         "Bultos despachados",
@@ -688,10 +654,8 @@ def main():
         "Nro carga",
     ]
 
-
     columnas_detalle = [c for c in columnas_detalle if c in f.columns]
 
-    
     st.data_editor(
         f[columnas_detalle],
         use_container_width=True,
@@ -699,7 +663,6 @@ def main():
         disabled=True,
         key="detalle_final"
     )
-
 
     # -----------------------------------------
     # DESCARGA
