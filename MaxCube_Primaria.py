@@ -30,7 +30,6 @@ CAPACIDAD_100_DESTINO = {
     "LA SERENA / RUTA SOLITARIA 1059 LV": 1750,
     "RUTA SOLITARIA 1059 LV / LA SERENA": 1750,
     "RUTA SOLITARIA 1059 LV": 1750,
-    "1059 RUTA SOLITARIA LV": 1750,
     "LO ESPEJO": 1560,
     "LOS ANDES": 1560,
     "LOS ANGELES": 1700,
@@ -40,7 +39,6 @@ CAPACIDAD_100_DESTINO = {
     "PTO MONTT / RUTA SOLITARIA ELPAC": 1800,
     "RUTA SOLITARIA ELPAC / PTO MONTT": 1800,
     "RUTA SOLITARIA ELPAC": 1800,
-    
     "COPIAPO / LA SERENA": 1750,
     "LOS ANGELES / TEMUCO": 1750,
     "SAN FERNANDO / TALCA": 1664,
@@ -96,20 +94,14 @@ def normalizar_destino(destino):
         .replace("\xa0", " ")
         .strip()
     )
-
-    # limpia espacios dobles
     destino = " ".join(destino.split())
-
-    # separa por slash, limpia y ordena
     partes = [p.strip() for p in destino.split("/") if p.strip()]
     partes = sorted(partes)
-
     return " / ".join(partes)
 
 
 def obtener_capacidad(destino):
     destino_norm = normalizar_destino(destino)
-    # Busca normalizando también las claves del dict
     for clave, valor in CAPACIDAD_100_DESTINO.items():
         if normalizar_destino(clave) == destino_norm:
             return valor
@@ -135,29 +127,18 @@ def leer_csv_github(repo, filename):
 def calcular_semana_bimbo(fecha):
     if pd.isna(fecha):
         return None
-
     año = fecha.year
-
     primer_dia = pd.Timestamp(f"{año}-01-01")
-    offset = (3 - primer_dia.weekday()) % 7  # jueves
+    offset = (3 - primer_dia.weekday()) % 7
     primer_jueves = primer_dia + pd.Timedelta(days=offset)
-
     if fecha < primer_jueves:
         año -= 1
         primer_dia = pd.Timestamp(f"{año}-01-01")
         offset = (3 - primer_dia.weekday()) % 7
         primer_jueves = primer_dia + pd.Timedelta(days=offset)
-
     dias = (fecha - primer_jueves).days
     semana = (dias // 7) + 1
-
     return f"{año}-S{str(semana).zfill(2)}"
-
-
-# DEBUG VISIBLE - pegar aquí temporalmente
-st.write("### 🔍 DEBUG")
-debug_df = df[["Destino Agencia concat", "Capacidad 100%", "Bultos despachados", "Gap a 100%"]].drop_duplicates("Destino Agencia concat")
-st.dataframe(debug_df)
 
 
 # =========================================================
@@ -166,29 +147,17 @@ st.dataframe(debug_df)
 def cargar_maxcube():
     g = Github(GITHUB_TOKEN)
     repo = g.get_repo(REPO_NAME)
-
     df = leer_csv_github(repo, ARCHIVO_MAXCUBE)
 
     if df.empty:
         return df
 
-    # -------------------------
-    # Normalización básica
-    # -------------------------
     df.columns = [c.strip() for c in df.columns]
 
     columnas_esperadas = [
-        "Bitácora",
-        "Nro carga",
-        "Fecha de despacho",
-        "Hora de despacho",
-        "Destino Agencia concat",
-        "PROVEEDOR",
-        "Patente vehículo",
-        "Viajes",
-        "Bultos despachados",
+        "Bitácora", "Nro carga", "Fecha de despacho", "Hora de despacho",
+        "Destino Agencia concat", "PROVEEDOR", "Patente vehículo", "Viajes", "Bultos despachados",
     ]
-
     for col in columnas_esperadas:
         if col not in df.columns:
             df[col] = ""
@@ -196,146 +165,65 @@ def cargar_maxcube():
     if "Patente rampla" not in df.columns:
         df["Patente rampla"] = ""
 
-    # -------------------------
-    # Patentes
-    # -------------------------
     df["Patente rampla"] = (
-        df["Patente rampla"]
-        .astype(str)
-        .str.replace('="', '', regex=False)
-        .str.replace('"', '', regex=False)
-        .str.strip()
-        .str.upper()
+        df["Patente rampla"].astype(str)
+        .str.replace('="', '', regex=False).str.replace('"', '', regex=False)
+        .str.strip().str.upper()
     )
-
     df["Patente vehículo"] = (
-        df["Patente vehículo"]
-        .astype(str)
-        .str.replace('="', '', regex=False)
-        .str.replace('"', '', regex=False)
-        .str.strip()
-        .str.upper()
+        df["Patente vehículo"].astype(str)
+        .str.replace('="', '', regex=False).str.replace('"', '', regex=False)
+        .str.strip().str.upper()
     )
 
-    # -------------------------
-    # Fecha + hora real
-    # -------------------------
-    df["Fecha de despacho"] = pd.to_datetime(
-        df["Fecha de despacho"],
-        dayfirst=True,
-        errors="coerce"
-    )
-
+    df["Fecha de despacho"] = pd.to_datetime(df["Fecha de despacho"], dayfirst=True, errors="coerce")
     df["Hora de despacho"] = df["Hora de despacho"].astype(str).str.strip()
-
     df["Fecha despacho dt"] = pd.to_datetime(
         df["Fecha de despacho"].dt.strftime("%d/%m/%Y") + " " + df["Hora de despacho"],
-        dayfirst=True,
-        errors="coerce"
+        dayfirst=True, errors="coerce"
     )
-
-    # Visual
     df["Fecha de despacho"] = df["Fecha de despacho"].dt.strftime("%d/%m/%Y")
 
-    # -------------------------
-    # Numéricos
-    # -------------------------
-    df["Bultos despachados"] = pd.to_numeric(
-        df["Bultos despachados"],
-        errors="coerce"
-    ).fillna(0)
+    df["Bultos despachados"] = pd.to_numeric(df["Bultos despachados"], errors="coerce").fillna(0)
+    df["Viajes"] = pd.to_numeric(df["Viajes"], errors="coerce").fillna(1)
 
-    df["Viajes"] = pd.to_numeric(
-        df["Viajes"],
-        errors="coerce"
-    ).fillna(1)
-
-    # -------------------------
-    # Campos temporales
-    # -------------------------
     df["Fecha"] = df["Fecha despacho dt"].dt.date
     df["Año-Semana"] = df["Fecha despacho dt"].apply(calcular_semana_bimbo)
     df["Mes"] = df["Fecha despacho dt"].dt.strftime("%Y-%m")
 
-    # -------------------------
-    # Destino / capacidad base
-    # -------------------------
     df["Destino Agencia concat"] = (
-        df["Destino Agencia concat"]
-        .astype(str)
+        df["Destino Agencia concat"].astype(str)
         .str.upper()
         .str.replace("\xa0", " ", regex=False)
         .str.strip()
         .str.replace(r"\s+", " ", regex=True)
         .str.replace(r"\s*/\s*", " / ", regex=True)
     )
-
     df["Destino Agencia concat"] = df["Destino Agencia concat"].apply(normalizar_destino)
     df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
 
-    # Debug real de faltantes
-    faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].dropna().unique()
-    if len(faltantes) > 0:
-        print("🚨 DESTINOS SIN MATCH REAL:")
-        for d in faltantes:
-            print(f"[{repr(d)}]")
-
-    # -------------------------
-    # Override por rampla SOLO ESPEJO / PINAR
-    # -------------------------
+    # Override rampla
     mask_destinos = df["Destino Agencia concat"].isin(DESTINOS_RAMPLA_RULE)
     cap_por_rampla = df["Patente rampla"].map(CAPACIDAD_RAMPLA_ESPEJO_PINAR)
-
     df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad 100%"] = cap_por_rampla
 
-    # -------------------------
-    # Override por proveedor 2200
-    # -------------------------
+    # Override proveedor 2200
     df.loc[
         df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
         "Capacidad 100%"
     ] = 2200
 
-    # -------------------------
-    # KPI
-    # -------------------------
-    df["Uso MaxCube %"] = (
-        df["Bultos despachados"] / df["Capacidad 100%"] * 100
-    ).round(2)
-
+    df["Uso MaxCube %"] = (df["Bultos despachados"] / df["Capacidad 100%"] * 100).round(2)
     df["Gap a 100%"] = df["Capacidad 100%"] - df["Bultos despachados"]
 
-    # Orden base
     df = df.sort_values(
         ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
         ascending=[True, True, True, True]
     )
 
-    
-    # DEBUG TEMPORAL
-    faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].unique()
-    print("SIN CAPACIDAD:", faltantes)
-    
-    # También imprime cómo quedaron las claves del diccionario
-    print("CLAVES DICT:", list(CAPACIDAD_100_DESTINO.keys()))  
-
-     # DEBUG - quitar después
-    faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].dropna().unique()
-    if len(faltantes) > 0:
-        st.warning("⚠️ Sin capacidad: " + str(faltantes))
-
-    # DEBUG COMPLETO - quitar después
-    st.subheader("🔍 DEBUG Capacidad")
-    debug_df = df[["Destino Agencia concat", "Capacidad 100%", "Bultos despachados", "Gap a 100%"]].copy()
-    debug_df = debug_df[debug_df["Capacidad 100%"].fillna(0) == 0]  # solo los problemáticos
-    if not debug_df.empty:
-        st.dataframe(debug_df)
-        st.write("Destinos con capacidad 0 o nula:", debug_df["Destino Agencia concat"].unique().tolist())
-    else:
-        st.success("✅ Todos los destinos tienen capacidad asignada correctamente")
-
-    
     return df
+
+
 # =========================================================
 # AUXILIARES
 # =========================================================
@@ -353,7 +241,6 @@ def semaforo(valor):
 def resumen_por_destino(f):
     if f.empty:
         return pd.DataFrame()
-
     resumen = (
         f.groupby("Destino Agencia concat", as_index=False)
         .agg(
@@ -363,81 +250,28 @@ def resumen_por_destino(f):
             Gap=("Gap a 100%", "sum")
         )
     )
-
-    resumen["Uso MaxCube %"] = (
-        resumen["Bultos"] / resumen["Capacidad"] * 100
-    ).round(2)
-
+    resumen["Uso MaxCube %"] = (resumen["Bultos"] / resumen["Capacidad"] * 100).round(2)
     resumen["Semáforo"] = resumen["Uso MaxCube %"].apply(semaforo)
     resumen = resumen.sort_values("Uso MaxCube %", ascending=True)
-    return resumen
-
-
-def resumen_por_patente(f):
-    if f.empty or "Patente rampla" not in f.columns:
-        return pd.DataFrame()
-
-    f_pat = f.copy()
-    f_pat = f_pat[f_pat["Patente rampla"].astype(str).str.strip() != ""]
-
-    if f_pat.empty:
-        return pd.DataFrame()
-
-    resumen = (
-        f_pat.groupby("Patente rampla", as_index=False)
-        .agg(
-            Destinos=("Destino Agencia concat", lambda x: " / ".join(sorted(set(
-                [str(v) for v in x if pd.notna(v) and str(v).strip() != ""]
-            )))),
-            Proveedores=("PROVEEDOR", lambda x: " / ".join(sorted(set(
-                [str(v) for v in x if pd.notna(v) and str(v).strip() != ""]
-            )))),
-            Bultos=("Bultos despachados", "sum"),
-            Viajes=("Viajes", "sum"),
-            Capacidad=("Capacidad 100%", "sum"),
-            Gap=("Gap a 100%", "sum")
-        )
-    )
-
-    resumen["Uso MaxCube %"] = (
-        resumen["Bultos"] / resumen["Capacidad"] * 100
-    ).round(2)
-
-    resumen["Semáforo"] = resumen["Uso MaxCube %"].apply(semaforo)
-    resumen = resumen.sort_values("Uso MaxCube %", ascending=True)
-
     return resumen
 
 
 def metricas_globales(f):
     if f.empty:
         return 0, 0, 0, 0, 0
-
     f_aux = f.copy()
-
     f_aux["Bultos"] = pd.to_numeric(f_aux["Bultos despachados"], errors="coerce").fillna(0)
     f_aux["Capacidad"] = pd.to_numeric(f_aux["Capacidad 100%"], errors="coerce")
-
     total_bultos = f_aux["Bultos"].sum()
     total_viajes = pd.to_numeric(f_aux["Viajes"], errors="coerce").fillna(0).sum()
     total_destinos = f_aux["Destino Agencia concat"].nunique()
-
-    f_valid = f_aux[
-        (f_aux["Capacidad"].notna()) &
-        (f_aux["Capacidad"] > 0)
-    ].copy()
-
+    f_valid = f_aux[(f_aux["Capacidad"].notna()) & (f_aux["Capacidad"] > 0)].copy()
     if f_valid.empty:
         uso_global = 0
     else:
         f_valid["Bultos capados"] = f_valid[["Bultos", "Capacidad"]].min(axis=1)
-        uso_global = round(
-            (f_valid["Bultos capados"].sum() / f_valid["Capacidad"].sum()) * 100,
-            2
-        )
-
+        uso_global = round((f_valid["Bultos capados"].sum() / f_valid["Capacidad"].sum()) * 100, 2)
     total_gap = pd.to_numeric(f_aux["Gap a 100%"], errors="coerce").fillna(0).sum()
-
     return total_bultos, total_viajes, total_destinos, uso_global, total_gap
 
 
@@ -460,82 +294,72 @@ def main():
         st.warning("El archivo MAXCUBE no contiene registros.")
         return
 
-    # -----------------------------------------
+    # =========================================================
+    # DEBUG TEMPORAL - borrar cuando esté resuelto
+    # =========================================================
+    with st.expander("🔍 DEBUG - Capacidad por destino (borrar después)", expanded=True):
+        debug_df = (
+            df[["Destino Agencia concat", "Capacidad 100%", "Bultos despachados", "Gap a 100%"]]
+            .drop_duplicates("Destino Agencia concat")
+            .sort_values("Destino Agencia concat")
+        )
+        st.dataframe(debug_df, use_container_width=True)
+
+        sin_cap = debug_df[debug_df["Capacidad 100%"].isna()]
+        cap_cero = debug_df[debug_df["Capacidad 100%"].fillna(0) == 0]
+
+        if not sin_cap.empty:
+            st.error("❌ Destinos SIN capacidad (NaN): " + str(sin_cap["Destino Agencia concat"].tolist()))
+        if not cap_cero.empty:
+            st.warning("⚠️ Destinos con capacidad = 0: " + str(cap_cero["Destino Agencia concat"].tolist()))
+        if sin_cap.empty and cap_cero.empty:
+            st.success("✅ Todos los destinos tienen capacidad correcta")
+    # =========================================================
+
     # SIDEBAR
-    # -----------------------------------------
     with st.sidebar:
         st.header("🔎 Filtros")
-
         modo = st.radio("Periodo", ["Día", "Semana", "Mes"], index=0)
-
         f = df.copy()
 
         if modo == "Día":
             fechas_validas = sorted(f["Fecha"].dropna().unique())
-            fecha_sel = st.selectbox(
-                "Fecha",
-                fechas_validas,
-                index=len(fechas_validas) - 1 if len(fechas_validas) > 0 else 0
-            )
+            fecha_sel = st.selectbox("Fecha", fechas_validas, index=len(fechas_validas) - 1 if fechas_validas else 0)
             f = f[f["Fecha"] == fecha_sel]
-
         elif modo == "Semana":
             semanas_validas = sorted(f["Año-Semana"].dropna().unique())
-            semana_sel = st.selectbox(
-                "Semana",
-                semanas_validas,
-                index=len(semanas_validas) - 1 if len(semanas_validas) > 0 else 0
-            )
+            semana_sel = st.selectbox("Semana", semanas_validas, index=len(semanas_validas) - 1 if semanas_validas else 0)
             f = f[f["Año-Semana"] == semana_sel]
-
         else:
             meses_validos = sorted(f["Mes"].dropna().unique())
-            mes_sel = st.selectbox(
-                "Mes",
-                meses_validos,
-                index=len(meses_validos) - 1 if len(meses_validos) > 0 else 0
-            )
+            mes_sel = st.selectbox("Mes", meses_validos, index=len(meses_validos) - 1 if meses_validos else 0)
             f = f[f["Mes"] == mes_sel]
 
         destinos = sorted(f["Destino Agencia concat"].dropna().astype(str).unique())
         destino_sel = st.multiselect("Destino", destinos)
-
         proveedores = sorted(f["PROVEEDOR"].dropna().astype(str).unique())
         prov_sel = st.multiselect("Proveedor", proveedores)
-
-        patentes_vehiculo = sorted(
-            [p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip() != ""]
-        )
+        patentes_vehiculo = sorted([p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip()])
         pat_veh_sel = st.multiselect("Patente vehículo", patentes_vehiculo)
-
-        patentes = sorted(
-            [p for p in f["Patente rampla"].dropna().astype(str).unique() if p.strip() != ""]
-        )
+        patentes = sorted([p for p in f["Patente rampla"].dropna().astype(str).unique() if p.strip()])
         pat_sel = st.multiselect("Patente rampla", patentes)
 
         if destino_sel:
             f = f[f["Destino Agencia concat"].isin(destino_sel)]
-
         if prov_sel:
             f = f[f["PROVEEDOR"].isin(prov_sel)]
-
         if pat_veh_sel:
             f = f[f["Patente vehículo"].isin(pat_veh_sel)]
-
         if pat_sel:
             f = f[f["Patente rampla"].isin(pat_sel)]
 
-    # Orden final
     f = f.sort_values(
         ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
         ascending=[True, True, True, True]
     )
 
-    # -----------------------------------------
     # KPIs
-    # -----------------------------------------
     total_bultos, total_viajes, total_destinos, uso_global, total_gap = metricas_globales(f)
-
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("📦 Bultos", f"{int(total_bultos):,}".replace(",", "."))
     c2.metric("🚚 Viajes", f"{int(total_viajes):,}".replace(",", "."))
@@ -545,156 +369,74 @@ def main():
 
     st.divider()
 
-    # -----------------------------------------
     # RESUMEN POR DESTINO
-    # -----------------------------------------
     df_dest = resumen_por_destino(f)
-
     st.subheader("📋 Resumen por destino")
     st.data_editor(
         df_dest[["Semáforo", "Destino Agencia concat", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
-        use_container_width=True,
-        disabled=True,
-        height=420,
-        key="tabla_resumen_destino"
+        use_container_width=True, disabled=True, height=420, key="tabla_resumen_destino"
     )
 
-    # -----------------------------------------
-    # ALERTAS AUTOMÁTICAS
-    # -----------------------------------------
+    # ALERTAS
     st.subheader("🚨 Alertas automáticas")
-
     criticos = df_dest[df_dest["Uso MaxCube %"] < 90]
     sobrecap = df_dest[df_dest["Gap"] < 0]
-
     if criticos.empty and sobrecap.empty:
         st.success("✅ No se detectan alertas críticas en el periodo seleccionado.")
     else:
         if not criticos.empty:
-            st.error(
-                "🔴 Destinos bajo 90% de uso MaxCube: "
-                + ", ".join(criticos["Destino Agencia concat"].astype(str).tolist())
-            )
-
+            st.error("🔴 Destinos bajo 90% de uso MaxCube: " + ", ".join(criticos["Destino Agencia concat"].astype(str).tolist()))
         if not sobrecap.empty:
-            st.warning(
-                "⚠️ Destinos sobre 100% de capacidad: "
-                + ", ".join(sobrecap["Destino Agencia concat"].astype(str).tolist())
-            )
+            st.warning("⚠️ Destinos sobre 100% de capacidad: " + ", ".join(sobrecap["Destino Agencia concat"].astype(str).tolist()))
 
-    # -----------------------------------------
     # RANKING
-    # -----------------------------------------
     st.subheader("🏆 Ranking automático")
-
     col_r1, col_r2 = st.columns(2)
-
     with col_r1:
         st.markdown("### 🔻 Top 5 peores destinos")
-        ranking_peor = df_dest.sort_values("Uso MaxCube %", ascending=True).head(5)
-
         st.data_editor(
-            ranking_peor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
-            use_container_width=True,
-            height=220,
-            disabled=True,
-            key="ranking_peores"
+            df_dest.sort_values("Uso MaxCube %", ascending=True).head(5)[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
+            use_container_width=True, height=220, disabled=True, key="ranking_peores"
         )
-
     with col_r2:
         st.markdown("### 🟢 Top 5 mejores destinos")
-        ranking_mejor = df_dest.sort_values("Uso MaxCube %", ascending=False).head(5)
-
         st.data_editor(
-            ranking_mejor[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
-            use_container_width=True,
-            height=220,
-            disabled=True,
-            key="ranking_mejores"
+            df_dest.sort_values("Uso MaxCube %", ascending=False).head(5)[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
+            use_container_width=True, height=220, disabled=True, key="ranking_mejores"
         )
 
-    # -----------------------------------------
     # VISUAL 1
-    # -----------------------------------------
     st.subheader("📊 Uso MaxCube % por destino")
-
     fig_uso = px.bar(
         df_dest.sort_values("Uso MaxCube %", ascending=True),
-        x="Uso MaxCube %",
-        y="Destino Agencia concat",
-        orientation="h",
-        text="Uso MaxCube %",
-        color="Uso MaxCube %",
-        color_continuous_scale="RdYlGn"
+        x="Uso MaxCube %", y="Destino Agencia concat", orientation="h",
+        text="Uso MaxCube %", color="Uso MaxCube %", color_continuous_scale="RdYlGn"
     )
-
     fig_uso.add_vline(x=100, line_dash="dash", line_color="red", line_width=2)
-
-    fig_uso.update_layout(
-        height=600,
-        xaxis_title="Uso MaxCube %",
-        yaxis_title="Destino",
-        coloraxis_showscale=False
-    )
-
+    fig_uso.update_layout(height=600, xaxis_title="Uso MaxCube %", yaxis_title="Destino", coloraxis_showscale=False)
     st.plotly_chart(fig_uso, use_container_width=True)
 
-    # -----------------------------------------
     # VISUAL 2
-    # -----------------------------------------
     st.subheader("📉 Gap a 100% por destino")
-
     fig_gap = px.bar(
         df_dest.sort_values("Gap", ascending=True),
-        x="Gap",
-        y="Destino Agencia concat",
-        orientation="h",
-        text="Gap"
+        x="Gap", y="Destino Agencia concat", orientation="h", text="Gap"
     )
-
     fig_gap.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
-
-    fig_gap.update_layout(
-        height=600,
-        xaxis_title="Gap a 100% (bultos)",
-        yaxis_title="Destino"
-    )
-
+    fig_gap.update_layout(height=600, xaxis_title="Gap a 100% (bultos)", yaxis_title="Destino")
     st.plotly_chart(fig_gap, use_container_width=True)
 
-    # -----------------------------------------
     # DETALLE
-    # -----------------------------------------
     st.subheader("📄 Detalle de despachos (orden ascendente)")
-
     columnas_detalle = [
-        "Fecha de despacho",
-        "Hora de despacho",
-        "Destino Agencia concat",
-        "PROVEEDOR",
-        "Patente vehículo",
-        "Patente rampla",
-        "Capacidad 100%",
-        "Bultos despachados",
-        "Uso MaxCube %",
-        "Gap a 100%",
-        "Bitácora",
-        "Nro carga",
+        "Fecha de despacho", "Hora de despacho", "Destino Agencia concat", "PROVEEDOR",
+        "Patente vehículo", "Patente rampla", "Capacidad 100%", "Bultos despachados",
+        "Uso MaxCube %", "Gap a 100%", "Bitácora", "Nro carga",
     ]
-
     columnas_detalle = [c for c in columnas_detalle if c in f.columns]
+    st.data_editor(f[columnas_detalle], use_container_width=True, height=550, disabled=True, key="detalle_final")
 
-    st.data_editor(
-        f[columnas_detalle],
-        use_container_width=True,
-        height=550,
-        disabled=True,
-        key="detalle_final"
-    )
-
-    # -----------------------------------------
     # DESCARGA
-    # -----------------------------------------
     st.download_button(
         "⬇️ Descargar CSV filtrado",
         data=f.to_csv(index=False).encode("utf-8"),
