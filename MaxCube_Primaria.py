@@ -305,7 +305,7 @@ def cargar_maxcube():
         ascending=[True, True, True, True]
     )
 
-    return df
+    
     # DEBUG TEMPORAL
     faltantes = df[df["Capacidad 100%"].isna()]["Destino Agencia concat"].unique()
     print("SIN CAPACIDAD:", faltantes)
@@ -313,7 +313,7 @@ def cargar_maxcube():
     # También imprime cómo quedaron las claves del diccionario
     print("CLAVES DICT:", list(CAPACIDAD_100_DESTINO.keys()))  
 
-
+    return df
 # =========================================================
 # AUXILIARES
 # =========================================================
