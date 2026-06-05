@@ -154,6 +154,12 @@ def calcular_semana_bimbo(fecha):
     return f"{año}-S{str(semana).zfill(2)}"
 
 
+# DEBUG VISIBLE - pegar aquí temporalmente
+st.write("### 🔍 DEBUG")
+debug_df = df[["Destino Agencia concat", "Capacidad 100%", "Bultos despachados", "Gap a 100%"]].drop_duplicates("Destino Agencia concat")
+st.dataframe(debug_df)
+
+
 # =========================================================
 # CARGA Y ENRIQUECIMIENTO
 # =========================================================
