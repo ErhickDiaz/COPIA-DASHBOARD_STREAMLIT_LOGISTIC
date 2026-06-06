@@ -101,19 +101,14 @@ def normalizar_destino(destino):
 
 def obtener_capacidad(destino):
     destino_norm = normalizar_destino(destino)
-
-    # Búsqueda directa
     if destino_norm in CAPACIDAD_100_DESTINO:
         return CAPACIDAD_100_DESTINO[destino_norm]
-
-    # Búsqueda rotando el orden de las partes (A/B → B/A, A/B/C → B/C/A, etc.)
     partes = [p.strip() for p in destino_norm.split("/") if p.strip()]
     for i in range(len(partes)):
         rotado = partes[i:] + partes[:i]
         clave = " / ".join(rotado)
         if clave in CAPACIDAD_100_DESTINO:
             return CAPACIDAD_100_DESTINO[clave]
-
     return None
 
 
@@ -269,19 +264,33 @@ def resumen_por_destino(f):
 def metricas_globales(f):
     if f.empty:
         return 0, 0, 0, 0, 0
+
     f_aux = f.copy()
     f_aux["Bultos"] = pd.to_numeric(f_aux["Bultos despachados"], errors="coerce").fillna(0)
     f_aux["Capacidad"] = pd.to_numeric(f_aux["Capacidad 100%"], errors="coerce")
+
     total_bultos = f_aux["Bultos"].sum()
     total_viajes = pd.to_numeric(f_aux["Viajes"], errors="coerce").fillna(0).sum()
     total_destinos = f_aux["Destino Agencia concat"].nunique()
+
     f_valid = f_aux[(f_aux["Capacidad"].notna()) & (f_aux["Capacidad"] > 0)].copy()
+
     if f_valid.empty:
         uso_global = 0
     else:
-        f_valid["Bultos capados"] = f_valid[["Bultos", "Capacidad"]].min(axis=1)
-        uso_global = round((f_valid["Bultos capados"].sum() / f_valid["Capacidad"].sum()) * 100, 2)
+        # Agrupar por destino → capar bultos a capacidad → calcular uso global
+        # Esto evita que destinos sobre 100% inflen el promedio global
+        resumen = f_valid.groupby("Destino Agencia concat").agg(
+            Bultos=("Bultos", "sum"),
+            Capacidad=("Capacidad", "sum")
+        )
+        resumen["Bultos capados"] = resumen[["Bultos", "Capacidad"]].min(axis=1)
+        uso_global = round(
+            resumen["Bultos capados"].sum() / resumen["Capacidad"].sum() * 100, 2
+        )
+
     total_gap = pd.to_numeric(f_aux["Gap a 100%"], errors="coerce").fillna(0).sum()
+
     return total_bultos, total_viajes, total_destinos, uso_global, total_gap
 
 
