@@ -45,6 +45,7 @@ def main():
         "Inicio": "🏠",
         "Monitoreo Pre Primaria": "📊",
         "Monitoreo Flota Primaria": "🚚",
+        "Logistica Inversa": "♻️",
         "MaxCube Primaria": "📦"
     }
 
@@ -76,7 +77,9 @@ def main():
         pre_primaria_main()
     elif st.session_state.selection == "Monitoreo Flota Primaria":
         flota_primaria_main()
-    elif st.session_state.selection == "MaxCube Primaria":
+    elif st.session_state.selection == "Logistica Inversa":
+        flota_primaria_main()
+        elif st.session_state.selection == "MaxCube Primaria":
         maxcube_primaria_main()
 
 if __name__ == "__main__":
