@@ -2,6 +2,7 @@ import streamlit as st
 from Inicio import main as inicio_main
 from Monitoreo_Pre_Primaria import main as pre_primaria_main
 from Monitoreo_Flota_Primaria import main as flota_primaria_main
+from logistica_inversa import main as logistica_inversa_main
 from MaxCube_Primaria import main as maxcube_primaria_main
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
