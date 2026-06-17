@@ -197,6 +197,24 @@ def main():
 
 
     # -----------------------------
+    # CALCULAR TOTALES POR ENVASE
+    # -----------------------------
+    columnas_base = [
+        "NUM_TRANSF",
+        "FECHA_TRANSFERENCIA",
+        "ORIGEN",
+        "DESTINO",
+        "ESTADO",
+        "TRACTO",
+        "RAMPLA",
+        "CARGA"
+    ]
+    
+    columnas_envase = [col for col in df_pivot.columns if col not in columnas_base]
+    
+    totales_envase = df_pivot[columnas_envase].sum().reset_index()
+    totales_envase.columns = ["ENVASE", "TOTAL"]
+    # -----------------------------
     # TABLA TOTTALES#
     st.subheader("📦 Totales por tipo de envase")
     
