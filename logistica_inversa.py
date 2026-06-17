@@ -160,6 +160,7 @@ def main():
         "FECHA_TRANSFERENCIA",
         "ORIGEN",
         "DESTINO",
+        "REQUERIDOS",
         "ESTADO"
     ]
     
