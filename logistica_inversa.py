@@ -198,6 +198,16 @@ def main():
 
     # -----------------------------
     # TABLA TOTTALES#
+    st.subheader("📦 Totales por tipo de envase")
+    
+    # convertir a formato horizontal
+    totales_dict = dict(zip(totales_envase["ENVASE"], totales_envase["TOTAL"]))
+    
+    # crear columnas dinámicas según envases
+    cols = st.columns(len(totales_dict))
+    
+    for col, (envase, total) in zip(cols, totales_dict.items()):
+        col.metric(envase, f"{int(total):,}")
 
     # KPIs
     cols = st.columns(len(totales_dict))
