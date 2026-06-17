@@ -31,4 +31,4 @@ st.success("✅ Datos cargados correctamente")
 
 st.subheader("Vista previa de datos")
 st.dataframe(df.head(20))
-``
+
