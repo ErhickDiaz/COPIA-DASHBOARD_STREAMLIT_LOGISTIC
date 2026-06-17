@@ -190,7 +190,7 @@ def cargar_maxcube():
     df["Fecha de despacho"] = df["Fecha de despacho"].dt.strftime("%d/%m/%Y")
 
     df["Bultos despachados"] = pd.to_numeric(df["Bultos despachados"], errors="coerce").fillna(0)
-    df["Bultos empacados"] = pd.to_numeric(df["Bultos empacados"], errors
+    df["Bultos empacados"] = pd.to_numeric(df["Bultos empacados"], errors="coerce").fillna(0)
     df["Viajes"] = pd.to_numeric(df["Viajes"], errors="coerce").fillna(1)
 
     df["Fecha"] = df["Fecha despacho dt"].dt.date
