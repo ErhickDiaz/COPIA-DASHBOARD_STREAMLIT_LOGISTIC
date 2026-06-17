@@ -161,7 +161,7 @@ def cargar_maxcube():
     columnas_esperadas = [
         "Bitácora", "Nro carga", "Fecha de despacho", "Hora de despacho",
         "Destino Agencia concat", "PROVEEDOR", "Patente vehículo",
-        "Viajes", "Bultos despachados",
+        "Viajes", "Bultos despachados", "Bultos empacados",
     ]
     for col in columnas_esperadas:
         if col not in df.columns:
@@ -190,6 +190,7 @@ def cargar_maxcube():
     df["Fecha de despacho"] = df["Fecha de despacho"].dt.strftime("%d/%m/%Y")
 
     df["Bultos despachados"] = pd.to_numeric(df["Bultos despachados"], errors="coerce").fillna(0)
+    df["Bultos empacados"] = pd.to_numeric(df["Bultos empacados"], errors
     df["Viajes"] = pd.to_numeric(df["Viajes"], errors="coerce").fillna(1)
 
     df["Fecha"] = df["Fecha despacho dt"].dt.date
@@ -425,13 +426,21 @@ def main():
 
     # DETALLE
     st.subheader("📄 Detalle de despachos (orden ascendente)")
-    columnas_detalle = [
+    #_detalle = [
+    #   "Fecha de despacho", "Hora de despacho", "Destino Agencia concat", "PROVEEDOR",
+    #   "Patente vehículo", "Patente rampla", "Capacidad 100%", "Bultos despachados",
+    #   "Uso MaxCube %", "Gap a 100%", "Bitácora", "Nro carga",
+    # ]
+
+    _detalle = [
         "Fecha de despacho", "Hora de despacho", "Destino Agencia concat", "PROVEEDOR",
-        "Patente vehículo", "Patente rampla", "Capacidad 100%", "Bultos despachados",
+        "Patente vehículo", "Patente rampla", "Capacidad 100%",
+        "Bultos despachados", "Bultos empacados",
         "Uso MaxCube %", "Gap a 100%", "Bitácora", "Nro carga",
-    ]
-    columnas_detalle = [c for c in columnas_detalle if c in f.columns]
-    st.data_editor(f[columnas_detalle], use_container_width=True, height=550, disabled=True, key="detalle_final")
+    ]    
+    
+    _detalle = [c for c in _detalle if c in f.columns]
+    st.data_editor(f[_detalle], use_container_width=True, height=550, disabled=True, key="detalle_final")
 
     # DESCARGA
     st.download_button(
