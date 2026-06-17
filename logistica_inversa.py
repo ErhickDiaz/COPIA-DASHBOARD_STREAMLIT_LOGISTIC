@@ -4,11 +4,6 @@ import os
 
 def main():
 
-    st.set_page_config(
-        page_title="Dashboard Logística Inversa",
-        layout="wide"
-    )
-
     st.title("📦 Dashboard Logística Inversa")
     st.markdown("Control de Transferencias CTL")
 
