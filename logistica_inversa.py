@@ -193,6 +193,39 @@ def main():
     st.subheader("📊 Tabla consolidada por envase")
     st.dataframe(df_pivot)
 
+
+
+
+    # -----------------------------
+    # NUEVA TABLA: TOTALES POR ENVASE
+    # -----------------------------
+    st.subheader("📦 Totales por tipo de envase")
+    
+    # identificar columnas de envase desde el pivot
+    columnas_base = [
+        "NUM_TRANSF",
+        "FECHA_TRANSFERENCIA",
+        "ORIGEN",
+        "DESTINO",
+        "ESTADO",
+        "TRACTO",
+        "RAMPLA",
+        "CARGA"
+    ]
+    
+    columnas_envase = [col for col in df_pivot.columns if col not in columnas_base]
+    
+    # calcular totales
+    totales_envase = df_pivot[columnas_envase].sum().reset_index()
+    totales_envase.columns = ["ENVASE", "TOTAL"]
+    
+    # ordenar por mayor volumen
+    totales_envase = totales_envase.sort_values(by="TOTAL", ascending=False)
+    
+    # mostrar tabla
+    st.dataframe(totales_envase, use_container_width=True)
+
+    
     # -----------------------------
     # AGRUPACIÓN POR DESTINO
     # -----------------------------
