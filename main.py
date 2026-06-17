@@ -80,7 +80,7 @@ def main():
         flota_primaria_main()
     elif st.session_state.selection == "Logistica Inversa":
         logistica_inversa_main()
-        elif st.session_state.selection == "MaxCube Primaria":
+    elif st.session_state.selection == "MaxCube Primaria":
         maxcube_primaria_main()
 
 if __name__ == "__main__":
