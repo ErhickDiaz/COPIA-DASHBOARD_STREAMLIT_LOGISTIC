@@ -35,6 +35,14 @@ def main():
     # -----------------------------
     df.columns = df.columns.str.strip()
 
+    # convertir FECHA_TRANSFERENCIA a datetime
+    df["FECHA_TRANSFERENCIA"] = pd.to_datetime(
+        df["FECHA_TRANSFERENCIA"],
+        dayfirst=True,
+        errors="coerce"
+    )
+
+
     # convertir columnas numéricas
     df["CANT_ENVIADA"] = pd.to_numeric(df["CANT_ENVIADA"], errors="coerce")
     df["CANT_RECIBIDA"] = pd.to_numeric(df["CANT_RECIBIDA"], errors="coerce")
@@ -137,7 +145,11 @@ def main():
         (df["ORIGEN"].isin(origenes)) &
         (df["DESTINO"].isin(destinos))
     ]
-        
+
+    # ordenar por fecha ascendente
+    df_filtrado = df_filtrado.sort_values(by="FECHA_TRANSFERENCIA", ascending=True)
+
+
     # -----------------------------
     # TABLA
     # -----------------------------
