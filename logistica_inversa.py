@@ -152,11 +152,21 @@ def main():
     # -----------------------------
     # SEPARAR REQUERIDOS
     # -----------------------------
+    # -----------------------------
+    # SEPARAR REQUERIDOS (robusto)
+    # -----------------------------
+    df_filtrado["REQUERIDOS"] = df_filtrado["REQUERIDOS"].fillna("///").astype(str)
+    
+    # asegurar que tenga siempre 2 separadores
+    df_filtrado["REQUERIDOS"] = df_filtrado["REQUERIDOS"].apply(
+        lambda x: x if x.count("/") == 2 else (x + "/" * (2 - x.count("/")))
+    )
+    
+    # ahora sí dividir seguro
     df_filtrado[["TRACTO", "RAMPLA", "CARGA"]] = df_filtrado["REQUERIDOS"].str.split(
         "/",
         expand=True
     )
-
 
     # -----------------------------
     # TRANSFORMACIÓN (PIVOT)
