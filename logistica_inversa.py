@@ -75,38 +75,45 @@ def main():
 
     st.divider()
 
-    st.subheader("🔍 Filtros")
-    
-    col_f1, col_f2, col_f3 = st.columns(3)
+    st.sidebar.header("🔍 Filtros Logística Inversa")
     
     # -----------------------------
-    # FILTRO ESTADO
+    # ESTADO
     # -----------------------------
-    with col_f1:
+    todos_estados = st.checkbox("✅ Todos los estados", value=True)
+    
+    if todos_estados:
+        estados = df["ESTADO"].dropna().unique()
+    else:
         estados = st.multiselect(
-        "Estado",
-        options=df["ESTADO"].dropna().unique(),
-        default=df["ESTADO"].dropna().unique()
-    )
-
-    # -----------------------------
-    # FILTRO ORIGEN
-    # -----------------------------
-    with col_f2:
-        origenes = st.multiselect(
-            "Origen",
-            options=df["ORIGEN"].dropna().unique(),
-            default=df["ORIGEN"].dropna().unique()
+            "Estado",
+            options=sorted(df["ESTADO"].dropna().unique())
         )
     
     # -----------------------------
-    # FILTRO DESTINO
+    # ORIGEN
     # -----------------------------
-    with col_f3:
+    todos_origen = st.checkbox("✅ Todos los orígenes", value=True)
+    
+    if todos_origen:
+        origenes = df["ORIGEN"].dropna().unique()
+    else:
+        origenes = st.multiselect(
+            "Origen",
+            options=sorted(df["ORIGEN"].dropna().unique())
+        )
+    
+    # -----------------------------
+    # DESTINO
+    # -----------------------------
+    todos_destino = st.checkbox("✅ Todos los destinos", value=True)
+    
+    if todos_destino:
+        destinos = df["DESTINO"].dropna().unique()
+    else:
         destinos = st.multiselect(
             "Destino",
-            options=df["DESTINO"].dropna().unique(),
-            default=df["DESTINO"].dropna().unique()
+            options=sorted(df["DESTINO"].dropna().unique())
         )
     
     # -----------------------------
@@ -117,7 +124,7 @@ def main():
         (df["ORIGEN"].isin(origenes)) &
         (df["DESTINO"].isin(destinos))
     ]
-
+    
     # -----------------------------
     # TABLA
     # -----------------------------
