@@ -152,7 +152,7 @@ def main():
     # -----------------------------
     # SEPARAR REQUERIDOS
     # -----------------------------
-    df_filtrado[["TRACTO", "RAMPLA", "CARGA"]] = df_filtrado["Requeridos"].str.split(
+    df_filtrado[["TRACTO", "RAMPLA", "CARGA"]] = df_filtrado["REQUERIDOS"].str.split(
         "/",
         expand=True
     )
