@@ -149,6 +149,14 @@ def main():
     # ordenar por fecha ascendente
     df_filtrado = df_filtrado.sort_values(by="FECHA_TRANSFERENCIA", ascending=True)
 
+    # -----------------------------
+    # SEPARAR REQUERIDOS
+    # -----------------------------
+    df_filtrado[["TRACTO", "RAMPLA", "CARGA"]] = df_filtrado["Requeridos"].str.split(
+        "/",
+        expand=True
+    )
+
 
     # -----------------------------
     # TRANSFORMACIÓN (PIVOT)
@@ -160,10 +168,12 @@ def main():
         "FECHA_TRANSFERENCIA",
         "ORIGEN",
         "DESTINO",
-        "REQUERIDOS",
-        "ESTADO"
+        "ESTADO",
+        "TRACTO",
+        "RAMPLA",
+        "CARGA"
     ]
-    
+        
     df_pivot = df_filtrado.pivot_table(
         index=columnas_base,
         columns="ENVASE",  # 👈 tipo de envase
