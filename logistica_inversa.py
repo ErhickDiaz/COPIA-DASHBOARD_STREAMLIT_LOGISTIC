@@ -21,7 +21,7 @@ st.divider()
 
 @st.cache_data
 def cargar_datos():
-    ruta = os.path.join("data", "CL_16062026_1.xlsx")
+    ruta = os.path.join("data", "CL-tess.txt")
     df = pd.read_excel(ruta, engine="openpyxl")
     return df
 
