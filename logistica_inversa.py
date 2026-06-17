@@ -75,46 +75,60 @@ def main():
 
     st.divider()
 
-    st.sidebar.header("🔍 Filtros Logística Inversa")
+    st.sidebar.header("⚙️ Menú")
+    st.sidebar.subheader("📊 Logística Inversa")
+    st.sidebar.markdown("### 🔍 Filtros")
     
     # -----------------------------
     # ESTADO
     # -----------------------------
-    todos_estados = st.checkbox("✅ Todos los estados", value=True)
+    lista_estados = ["Todos"] + sorted(df["ESTADO"].dropna().unique())
     
-    if todos_estados:
+    estado_sel = st.sidebar.multiselect(
+        "Estado",
+        options=lista_estados,
+        default=["Todos"]
+    )
+    
+    if "Todos" in estado_sel:
         estados = df["ESTADO"].dropna().unique()
     else:
-        estados = st.multiselect(
-            "Estado",
-            options=sorted(df["ESTADO"].dropna().unique())
-        )
+        estados = estado_sel
+    
     
     # -----------------------------
     # ORIGEN
     # -----------------------------
-    todos_origen = st.checkbox("✅ Todos los orígenes", value=True)
+    lista_origen = ["Todos"] + sorted(df["ORIGEN"].dropna().unique())
     
-    if todos_origen:
+    origen_sel = st.sidebar.multiselect(
+        "Origen",
+        options=lista_origen,
+        default=["Todos"]
+    )
+    
+    if "Todos" in origen_sel:
         origenes = df["ORIGEN"].dropna().unique()
     else:
-        origenes = st.multiselect(
-            "Origen",
-            options=sorted(df["ORIGEN"].dropna().unique())
-        )
+        origenes = origen_sel
+    
     
     # -----------------------------
     # DESTINO
     # -----------------------------
-    todos_destino = st.checkbox("✅ Todos los destinos", value=True)
+    lista_destino = ["Todos"] + sorted(df["DESTINO"].dropna().unique())
     
-    if todos_destino:
+    destino_sel = st.sidebar.multiselect(
+        "Destino",
+        options=lista_destino,
+        default=["Todos"]
+    )
+    
+    if "Todos" in destino_sel:
         destinos = df["DESTINO"].dropna().unique()
     else:
-        destinos = st.multiselect(
-            "Destino",
-            options=sorted(df["DESTINO"].dropna().unique())
-        )
+        destinos = destino_sel
+    
     
     # -----------------------------
     # APLICAR FILTROS
@@ -124,7 +138,7 @@ def main():
         (df["ORIGEN"].isin(origenes)) &
         (df["DESTINO"].isin(destinos))
     ]
-    
+        
     # -----------------------------
     # TABLA
     # -----------------------------
