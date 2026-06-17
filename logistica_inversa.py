@@ -151,10 +151,36 @@ def main():
 
 
     # -----------------------------
+    # TRANSFORMACIÓN (PIVOT)
+    # -----------------------------
+    
+    # agrupamos por transferencia + datos base
+    columnas_base = [
+        "NUM_TRANSF",
+        "FECHA_TRANSFERENCIA",
+        "ORIGEN",
+        "DESTINO",
+        "ESTADO"
+    ]
+    
+    df_pivot = df_filtrado.pivot_table(
+        index=columnas_base,
+        columns="COD_UOM",  # 👈 tipo de envase
+        values="CANT_ENVIADA",  # 👈 puedes cambiar a recibida también
+        aggfunc="sum",
+        fill_value=0
+    ).reset_index()
+    
+    # limpiar nombres de columnas (muy importante)
+    df_pivot.columns.name = None
+
+
+    # -----------------------------
     # TABLA
     # -----------------------------
     st.subheader("📊 Datos filtrados")
-    st.dataframe(df_filtrado.head(100))
+    st.subheader("📊 Tabla consolidada por envase")
+    st.dataframe(df_pivot)
 
     # -----------------------------
     # AGRUPACIÓN POR DESTINO
