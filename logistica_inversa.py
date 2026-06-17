@@ -75,8 +75,7 @@ def main():
 
     st.divider()
 
-    st.sidebar.header("⚙️ Menú")
-    st.sidebar.subheader("📊 Logística Inversa")
+   
     st.sidebar.markdown("### 🔍 Filtros")
     
     # -----------------------------
