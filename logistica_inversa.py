@@ -75,18 +75,48 @@ def main():
 
     st.divider()
 
-    # -----------------------------
-    # FILTROS
-    # -----------------------------
     st.subheader("🔍 Filtros")
-
-    estados = st.multiselect(
-        "Filtrar por estado",
-        options=df["ESTADO"].unique(),
-        default=df["ESTADO"].unique()
+    
+    col_f1, col_f2, col_f3 = st.columns(3)
+    
+    # -----------------------------
+    # FILTRO ESTADO
+    # -----------------------------
+    with col_f1:
+        estados = st.multiselect(
+        "Estado",
+        options=df["ESTADO"].dropna().unique(),
+        default=df["ESTADO"].dropna().unique()
     )
 
-    df_filtrado = df[df["ESTADO"].isin(estados)]
+    # -----------------------------
+    # FILTRO ORIGEN
+    # -----------------------------
+    with col_f2:
+        origenes = st.multiselect(
+            "Origen",
+            options=df["ORIGEN"].dropna().unique(),
+            default=df["ORIGEN"].dropna().unique()
+        )
+    
+    # -----------------------------
+    # FILTRO DESTINO
+    # -----------------------------
+    with col_f3:
+        destinos = st.multiselect(
+            "Destino",
+            options=df["DESTINO"].dropna().unique(),
+            default=df["DESTINO"].dropna().unique()
+        )
+    
+    # -----------------------------
+    # APLICAR FILTROS
+    # -----------------------------
+    df_filtrado = df[
+        (df["ESTADO"].isin(estados)) &
+        (df["ORIGEN"].isin(origenes)) &
+        (df["DESTINO"].isin(destinos))
+    ]
 
     # -----------------------------
     # TABLA
