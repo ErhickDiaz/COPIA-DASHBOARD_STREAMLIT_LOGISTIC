@@ -224,9 +224,6 @@ def main():
     # crear columnas dinámicas según envases
     cols = st.columns(len(totales_dict))
     
-    for col, (envase, total) in zip(cols, totales_dict.items()):
-        col.metric(envase, f"{int(total):,}")
-
     # KPIs
     cols = st.columns(len(totales_dict))
     for col, (envase, total) in zip(cols, totales_dict.items()):
