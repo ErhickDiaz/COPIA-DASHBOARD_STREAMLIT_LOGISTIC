@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 
+
 def main():
 
     st.title("📦 Dashboard Logística Inversa")
@@ -42,22 +43,96 @@ def main():
         errors="coerce"
     )
 
-
     # convertir columnas numéricas
-    df["CANT_ENVIADA"] = pd.to_numeric(df["CANT_ENVIADA"], errors="coerce")
-    df["CANT_RECIBIDA"] = pd.to_numeric(df["CANT_RECIBIDA"], errors="coerce")
-    df["DIFERENCIA"] = pd.to_numeric(df["DIFERENCIA"], errors="coerce")
+    df["CANT_ENVIADA"] = pd.to_numeric(df["CANT_ENVIADA"], errors="coerce").fillna(0)
+    df["CANT_RECIBIDA"] = pd.to_numeric(df["CANT_RECIBIDA"], errors="coerce").fillna(0)
+    df["DIFERENCIA"] = pd.to_numeric(df["DIFERENCIA"], errors="coerce").fillna(0)
 
     # -----------------------------
-    # KPIs
+    # SIDEBAR - FILTROS
     # -----------------------------
-    total_transferencias = df["NUM_TRANSF"].nunique()
-    total_registros = len(df)
+    st.sidebar.markdown("### 🔍 Filtros")
 
-    receptados = df[df["ESTADO"] == "Receptado"].shape[0]
-    cancelados = df[df["ESTADO"] == "Cancelado"].shape[0]
+    # -----------------------------
+    # ESTADO
+    # -----------------------------
+    lista_estados = ["Todos"] + sorted(df["ESTADO"].dropna().unique())
 
-    diferencias = df[df["DIFERENCIA"] != 0].shape[0]
+    estado_sel = st.sidebar.multiselect(
+        "Estado",
+        options=lista_estados,
+        default=["Todos"]
+    )
+
+    if "Todos" in estado_sel:
+        estados = df["ESTADO"].dropna().unique()
+    else:
+        estados = estado_sel
+
+    # -----------------------------
+    # ORIGEN
+    # -----------------------------
+    lista_origen = ["Todos"] + sorted(df["ORIGEN"].dropna().unique())
+
+    origen_sel = st.sidebar.multiselect(
+        "Origen",
+        options=lista_origen,
+        default=["Todos"]
+    )
+
+    if "Todos" in origen_sel:
+        origenes = df["ORIGEN"].dropna().unique()
+    else:
+        origenes = origen_sel
+
+    # -----------------------------
+    # DESTINO
+    # -----------------------------
+    lista_destino = ["Todos"] + sorted(df["DESTINO"].dropna().unique())
+
+    destino_sel = st.sidebar.multiselect(
+        "Destino",
+        options=lista_destino,
+        default=["Todos"]
+    )
+
+    if "Todos" in destino_sel:
+        destinos = df["DESTINO"].dropna().unique()
+    else:
+        destinos = destino_sel
+
+    # -----------------------------
+    # APLICAR FILTROS
+    # -----------------------------
+    df_filtrado = df[
+        (df["ESTADO"].isin(estados)) &
+        (df["ORIGEN"].isin(origenes)) &
+        (df["DESTINO"].isin(destinos))
+    ].copy()
+
+    # ordenar por fecha ascendente
+    df_filtrado = df_filtrado.sort_values(
+        by="FECHA_TRANSFERENCIA",
+        ascending=True
+    )
+
+    # -----------------------------
+    # VALIDAR SI HAY DATOS
+    # -----------------------------
+    if df_filtrado.empty:
+        st.warning("⚠️ No hay datos para los filtros seleccionados.")
+        return
+
+    # -----------------------------
+    # KPIs SEGÚN FILTRO
+    # -----------------------------
+    total_transferencias = df_filtrado["NUM_TRANSF"].nunique()
+    total_registros = len(df_filtrado)
+
+    receptados = df_filtrado[df_filtrado["ESTADO"] == "Receptado"].shape[0]
+    cancelados = df_filtrado[df_filtrado["ESTADO"] == "Cancelado"].shape[0]
+
+    diferencias = df_filtrado[df_filtrado["DIFERENCIA"] != 0].shape[0]
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -73,106 +148,37 @@ def main():
     # -----------------------------
     st.subheader("⚠️ Transferencias con diferencia")
 
-    df_diff = df[df["DIFERENCIA"] != 0]
+    df_diff = df_filtrado[df_filtrado["DIFERENCIA"] != 0]
 
     if df_diff.empty:
         st.success("✅ Sin diferencias detectadas")
     else:
         st.warning(f"Se encontraron {len(df_diff)} registros con diferencia")
-        st.dataframe(df_diff.head(50))
+        st.dataframe(df_diff.head(50), use_container_width=True)
 
     st.divider()
 
-   
-    st.sidebar.markdown("### 🔍 Filtros")
-    
     # -----------------------------
-    # ESTADO
+    # SEPARAR REQUERIDOS ROBUSTO
     # -----------------------------
-    lista_estados = ["Todos"] + sorted(df["ESTADO"].dropna().unique())
-    
-    estado_sel = st.sidebar.multiselect(
-        "Estado",
-        options=lista_estados,
-        default=["Todos"]
-    )
-    
-    if "Todos" in estado_sel:
-        estados = df["ESTADO"].dropna().unique()
-    else:
-        estados = estado_sel
-    
-    
-    # -----------------------------
-    # ORIGEN
-    # -----------------------------
-    lista_origen = ["Todos"] + sorted(df["ORIGEN"].dropna().unique())
-    
-    origen_sel = st.sidebar.multiselect(
-        "Origen",
-        options=lista_origen,
-        default=["Todos"]
-    )
-    
-    if "Todos" in origen_sel:
-        origenes = df["ORIGEN"].dropna().unique()
-    else:
-        origenes = origen_sel
-    
-    
-    # -----------------------------
-    # DESTINO
-    # -----------------------------
-    lista_destino = ["Todos"] + sorted(df["DESTINO"].dropna().unique())
-    
-    destino_sel = st.sidebar.multiselect(
-        "Destino",
-        options=lista_destino,
-        default=["Todos"]
-    )
-    
-    if "Todos" in destino_sel:
-        destinos = df["DESTINO"].dropna().unique()
-    else:
-        destinos = destino_sel
-    
-    
-    # -----------------------------
-    # APLICAR FILTROS
-    # -----------------------------
-    df_filtrado = df[
-        (df["ESTADO"].isin(estados)) &
-        (df["ORIGEN"].isin(origenes)) &
-        (df["DESTINO"].isin(destinos))
-    ]
+    df_filtrado["REQUERIDOS"] = df_filtrado["REQUERIDOS"].fillna("").astype(str)
 
-    # ordenar por fecha ascendente
-    df_filtrado = df_filtrado.sort_values(by="FECHA_TRANSFERENCIA", ascending=True)
+    def separar_requeridos(valor):
+        partes = valor.split("/")
 
-    # -----------------------------
-    # SEPARAR REQUERIDOS
-    # -----------------------------
-    # -----------------------------
-    # SEPARAR REQUERIDOS (robusto)
-    # -----------------------------
-    df_filtrado["REQUERIDOS"] = df_filtrado["REQUERIDOS"].fillna("///").astype(str)
-    
-    # asegurar que tenga siempre 2 separadores
-    df_filtrado["REQUERIDOS"] = df_filtrado["REQUERIDOS"].apply(
-        lambda x: x if x.count("/") == 2 else (x + "/" * (2 - x.count("/")))
-    )
-    
-    # ahora sí dividir seguro
-    df_filtrado[["TRACTO", "RAMPLA", "CARGA"]] = df_filtrado["REQUERIDOS"].str.split(
-        "/",
-        expand=True
+        tracto = partes[0].strip() if len(partes) > 0 else ""
+        rampla = partes[1].strip() if len(partes) > 1 else ""
+        carga = partes[2].strip() if len(partes) > 2 else ""
+
+        return pd.Series([tracto, rampla, carga])
+
+    df_filtrado[["TRACTO", "RAMPLA", "CARGA"]] = df_filtrado["REQUERIDOS"].apply(
+        separar_requeridos
     )
 
     # -----------------------------
-    # TRANSFORMACIÓN (PIVOT)
+    # TRANSFORMACIÓN PIVOT
     # -----------------------------
-    
-    # agrupamos por transferencia + datos base
     columnas_base = [
         "NUM_TRANSF",
         "FECHA_TRANSFERENCIA",
@@ -183,66 +189,72 @@ def main():
         "RAMPLA",
         "CARGA"
     ]
-        
+
     df_pivot = df_filtrado.pivot_table(
         index=columnas_base,
-        columns="ENVASE",  # 👈 tipo de envase
-        values="CANT_ENVIADA",  # 👈 puedes cambiar a recibida también
+        columns="ENVASE",
+        values="CANT_ENVIADA",
         aggfunc="sum",
         fill_value=0
     ).reset_index()
-    
-    # limpiar nombres de columnas (muy importante)
+
+    # limpiar nombre del índice de columnas
     df_pivot.columns.name = None
 
+    # ordenar nuevamente por fecha ascendente
+    df_pivot = df_pivot.sort_values(
+        by="FECHA_TRANSFERENCIA",
+        ascending=True
+    )
 
     # -----------------------------
-    # TABLA
+    # TABLA CONSOLIDADA
     # -----------------------------
-    st.subheader("📊 Datos filtrados")
     st.subheader("📊 Tabla consolidada por envase")
-    st.dataframe(df_pivot)
+    st.dataframe(df_pivot, use_container_width=True)
 
-
-
+    st.divider()
 
     # -----------------------------
-    # CALCULAR TOTALES POR ENVASE
+    # TOTALES POR ENVASE
     # -----------------------------
-    columnas_base = [
-        "NUM_TRANSF",
-        "FECHA_TRANSFERENCIA",
-        "ORIGEN",
-        "DESTINO",
-        "ESTADO",
-        "TRACTO",
-        "RAMPLA",
-        "CARGA"
+    columnas_envase = [
+        col for col in df_pivot.columns
+        if col not in columnas_base
     ]
-    
-    columnas_envase = [col for col in df_pivot.columns if col not in columnas_base]
-    
-    totales_envase = df_pivot[columnas_envase].sum().reset_index()
-    totales_envase.columns = ["ENVASE", "TOTAL"]
-    # -----------------------------
-    # TABLA TOTTALES#
-    st.subheader("📦 Totales por tipo de envase")
-    
-    # convertir a formato horizontal
-    totales_dict = dict(zip(totales_envase["ENVASE"], totales_envase["TOTAL"]))
-    
-    # crear columnas dinámicas según envases
-    cols = st.columns(len(totales_dict))
-    
-    # KPIs
-    cols = st.columns(len(totales_dict))
-    for col, (envase, total) in zip(cols, totales_dict.items()):
-        col.metric(envase, f"{int(total):,}")
-    
-    # gráfico
-    st.bar_chart(totales_envase.set_index("ENVASE"))
 
-    
+    if len(columnas_envase) > 0:
+
+        totales_envase = df_pivot[columnas_envase].sum().reset_index()
+        totales_envase.columns = ["ENVASE", "TOTAL"]
+
+        # quitar envases con total 0 si quieres una tabla más limpia
+        totales_envase = totales_envase[totales_envase["TOTAL"] > 0]
+
+        st.subheader("📦 Totales por tipo de envase")
+
+        if totales_envase.empty:
+            st.info("No hay totales de envases para mostrar.")
+        else:
+            # tabla resumen
+            st.dataframe(totales_envase, use_container_width=True)
+
+            # KPIs dinámicos
+            totales_dict = dict(zip(totales_envase["ENVASE"], totales_envase["TOTAL"]))
+
+            cols = st.columns(len(totales_dict))
+
+            for col, (envase, total) in zip(cols, totales_dict.items()):
+                col.metric(envase, f"{int(total):,}".replace(",", "."))
+
+            # gráfico
+            st.bar_chart(totales_envase.set_index("ENVASE"))
+
+    else:
+        st.info("No se detectaron columnas de envase para totalizar.")
+
+    st.divider()
+
     # -----------------------------
     # AGRUPACIÓN POR DESTINO
     # -----------------------------
@@ -263,3 +275,13 @@ def main():
     with st.expander("🛠 Debug"):
         st.write("Columnas detectadas:")
         st.write(df.columns)
+
+        st.write("Vista previa datos filtrados:")
+        st.dataframe(df_filtrado.head(20), use_container_width=True)
+
+        st.write("Vista previa tabla pivot:")
+        st.dataframe(df_pivot.head(20), use_container_width=True)
+
+
+if __name__ == "__main__":
+    main()
