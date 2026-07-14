@@ -80,6 +80,14 @@ CAPACIDAD_RAMPLA_ESPEJO_PINAR = {
     "PXJD32": 1560,
     "PXJD33": 1560,
     "PXJD34": 1560,
+    "RSBH44": 600,
+    "RBSG83": 600,
+    "SCZL44": 600,
+    "SCZL42": 600,
+    "SSSZ55": 600,
+    "SSSZ58": 600,
+    
+    
 }
 
 DESTINOS_RAMPLA_RULE = {"LO ESPEJO", "EL PINAR"}
