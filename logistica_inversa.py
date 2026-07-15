@@ -31,14 +31,8 @@ def main():
 
     st.success("✅ Datos cargados correctamente")
 
-    
-    
+     
 
-    st.write("Columnas detectadas:")
-    st.write(df.columns.tolist())
-    
-    st.write("Primeras filas:")
-    st.dataframe(df.head())
     # -----------------------------
     # LIMPIEZA BÁSICA
     # -----------------------------
