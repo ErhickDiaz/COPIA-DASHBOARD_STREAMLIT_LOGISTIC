@@ -19,7 +19,7 @@ def main():
 
         df = pd.read_csv(
             ruta,
-            sep=",",
+            sep="\t",
             encoding="latin-1",
             engine="python",
             on_bad_lines="skip"
@@ -32,8 +32,7 @@ def main():
     st.success("✅ Datos cargados correctamente")
 
     
-    with open(ruta, "r", encoding="latin-1") as f:
-        print(f.readline())
+    
 
     st.write("Columnas detectadas:")
     st.write(df.columns.tolist())
