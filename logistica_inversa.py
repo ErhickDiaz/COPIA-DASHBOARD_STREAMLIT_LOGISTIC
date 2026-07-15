@@ -31,6 +31,10 @@ def main():
 
     st.success("✅ Datos cargados correctamente")
 
+    
+    with open(ruta, "r", encoding="latin-1") as f:
+        print(f.readline())
+
     st.write("Columnas detectadas:")
     st.write(df.columns.tolist())
     
