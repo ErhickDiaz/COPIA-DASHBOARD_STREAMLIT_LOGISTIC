@@ -1,617 +1,463 @@
 import streamlit as st
 import pandas as pd
-import os
+from github import Github
 from io import StringIO
 from datetime import datetime
-from PIL import Image, UnidentifiedImageError
-from streamlit_echarts import st_echarts
-import numpy as np
-import plotly.express as px
 import pytz
-import base64
-import requests
-
+import plotly.express as px
 
 # =========================================================
-# CONFIG GITHUB RAW
+# CONFIG
 # =========================================================
-GITHUB_USER = "ErhickDiaz"
-GITHUB_REPO = "COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
-GITHUB_BRANCH = "main"
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
 GITHUB_FOLDER = "data"
+ARCHIVO_MAXCUBE = "MAXCUBE_Primaria.csv"
+ZONA_HORARIA = "America/Santiago"
 
-BASE_RAW_URL = (
-    f"https://raw.githubusercontent.com/"
-    f"{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{GITHUB_FOLDER}"
-)
+# =========================================================
+# REGLAS DE CAPACIDAD
+# =========================================================
+CAPACIDAD_100_DESTINO = {
+    "ANTOFAGASTA": 1800,
+    "ARICA": 1800,
+    "CHILLAN": 1700,
+    "CONCEPCION": 1700,
+    "COPIAPO": 1750,
+    "EL PINAR": 1250,
+    "IQUIQUE": 1800,
+    "LA SERENA": 1700,
+    "LA SERENA / RUTA SOLITARIA 1059 LV": 1750,
+    "RUTA SOLITARIA 1059 LV": 1750,
+    "LO ESPEJO": 1560,
+    "LOS ANDES": 1560,
+    "LOS ANGELES": 1700,
+    "MELIPILLA": 1700,
+    "OSORNO": 1800,
+    "PTO MONTT": 1800,
+    "PTO MONTT / RUTA SOLITARIA ELPAC": 1800,
+    "RUTA SOLITARIA ELPAC": 1800,
+    "COPIAPO / LA SERENA": 1750,
+    "LOS ANGELES / TEMUCO": 1750,
+    "LOS ANGELES / OSORNO": 1750,
+    "SAN FERNANDO / TALCA": 1664,
+    "CHILLAN / TALCA": 1664,
+    "CONCEPCION / TALCA": 1664,
+    "CONCEPCION / CHILLAN": 1750,
+    "PTO MONTT / VALDIVIA": 1750,
+    "VALDIVIA / PTO MONTT": 1750,
+    "VALDIVIA / OSORNO": 1750,
+    "OSORNO / VALDIVIA": 1750,
+    "ANTOFAGASTA / IQUIQUE": 1750,
+    "ANTOFAGASTA / ARICA": 1750,
+    "ANTOFAGASTA / ARICA / IQUIQUE": 1750,
+    "ANTOFAGASTA / TALCA": 1750,
+    "CONCEPCION / LOS ANGELES": 1750,
+    "CONCEPCION / TEMUCO": 1750,
+    "RANCAGUA": 1700,
+    "SAN FERNANDO": 1560,
+    "TALCA": 1750,
+    "TEMUCO": 1750,
+    "VALDIVIA": 1800,
+    "VINA DEL MAR": 1664,
+}
+
+PROVEEDOR_CAP_2200 = "76746317-0/TRAILER LOGISTICS SPA"
+
+# =========================================================
+# CAPACIDAD POR PATENTE DE RAMPLA (Solo LO ESPEJO y EL PINAR)
+# =========================================================
+CAPACIDAD_RAMPLA_ESPEJO_PINAR = {
+    "JF4261": 1080,
+    "JG4930": 1280,
+    "JG5632": 1280,
+    "HXDF11": 1280,
+    "HXDF12": 1280,
+    "PWVW35": 1280,
+    "PWVX27": 1280,
+    "KYPH94": 1560,
+    "KYPH95": 1560,
+    "PXJD32": 1560,
+    "PXJD33": 1560,
+    "PXJD34": 1560,
+    "RSBH44": 600,
+    "RBSG83": 600,
+    "SCZL44": 600,
+    "SCZL42": 600,
+    "SSSZ55": 600,
+    "SSSZ58": 600,
+    
+    
+}
+
+DESTINOS_RAMPLA_RULE = {"LO ESPEJO", "EL PINAR"}
+
+# =========================================================
+# NORMALIZACIÓN / CAPACIDAD
+# =========================================================
+def normalizar_destino(destino):
+    destino = (
+        str(destino)
+        .upper()
+        .replace("\xa0", " ")
+        .strip()
+    )
+    destino = " ".join(destino.split())
+    partes = [p.strip() for p in destino.split("/") if p.strip()]
+    return " / ".join(partes)
+
+
+def obtener_capacidad(destino):
+    destino_norm = normalizar_destino(destino)
+    if destino_norm in CAPACIDAD_100_DESTINO:
+        return CAPACIDAD_100_DESTINO[destino_norm]
+    partes = [p.strip() for p in destino_norm.split("/") if p.strip()]
+    for i in range(len(partes)):
+        rotado = partes[i:] + partes[:i]
+        clave = " / ".join(rotado)
+        if clave in CAPACIDAD_100_DESTINO:
+            return CAPACIDAD_100_DESTINO[clave]
+    return None
 
 
 # =========================================================
-# FUNCIONES PARA LECTURA DESDE GITHUB RAW
+# GITHUB
 # =========================================================
-@st.cache_data(ttl=180)
-def leer_csv_github_raw(filename):
-    """
-    Lee un CSV público desde GitHub RAW.
-    Evita usar PyGithub en Streamlit Cloud.
-    """
+def leer_csv_github(repo, filename):
     try:
-        url = f"{BASE_RAW_URL}/{filename}"
-
-        response = requests.get(
-            url,
-            timeout=30,
-            headers={
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache"
-            }
-        )
-
-        response.raise_for_status()
-
-        csv_string = response.content.decode("utf-8-sig", errors="replace")
-        df = pd.read_csv(StringIO(csv_string))
-
-        return df
-
+        file_content = repo.get_contents(f"{GITHUB_FOLDER}/{filename}")
+        csv_string = file_content.decoded_content.decode("utf-8")
+        return pd.read_csv(StringIO(csv_string))
     except Exception as e:
-        st.warning(f"No se pudo cargar {filename} desde GitHub RAW.")
-        st.caption(f"Archivo buscado: {filename}")
-        st.caption(f"URL RAW: {BASE_RAW_URL}/{filename}")
-        st.exception(e)
+        st.error(f"No se pudo cargar {filename} desde GitHub: {e}")
         return pd.DataFrame()
 
 
 # =========================================================
-# FUNCIONES AUXILIARES VISUALES
+# SEMANA BIMBO (Jueves → Miércoles)
 # =========================================================
-def load_image_base64(image_file):
-    """
-    Carga una imagen local y la convierte a base64.
-    Si no existe, devuelve None para evitar que la app falle.
-    """
-    try:
-        base_dir = os.path.dirname(__file__)
-        img_path = os.path.join(base_dir, image_file)
-
-        if not os.path.exists(img_path):
-            return None
-
-        with open(img_path, "rb") as f:
-            data = f.read()
-            return base64.b64encode(data).decode()
-
-    except Exception:
+def calcular_semana_bimbo(fecha):
+    if pd.isna(fecha):
         return None
-
-
-def load_css(file_name):
-    """
-    Carga CSS local si existe.
-    Si no existe, la app continúa sin romper.
-    """
-    try:
-        base_dir = os.path.dirname(__file__)
-        css_path = os.path.join(base_dir, file_name)
-
-        if os.path.exists(css_path):
-            with open(css_path, encoding="utf-8") as f:
-                st.markdown(
-                    f"<style>{f.read()}</style>",
-                    unsafe_allow_html=True
-                )
-        else:
-            st.sidebar.warning(f"No se encontró el archivo CSS: {file_name}")
-
-    except Exception as e:
-        st.sidebar.warning(f"No se pudo cargar CSS: {e}")
-
-
-def load_sidebar_image(image_filename):
-    """
-    Carga una imagen en sidebar si existe.
-    """
-    try:
-        base_dir = os.path.dirname(__file__)
-        img_path = os.path.join(base_dir, image_filename)
-
-        if os.path.exists(img_path):
-            try:
-                img = Image.open(img_path)
-                st.sidebar.image(img, use_container_width=True)
-            except UnidentifiedImageError:
-                st.sidebar.warning(
-                    f"Archivo encontrado pero no es una imagen válida: {image_filename}"
-                )
-            except Exception as e:
-                st.sidebar.error(f"Error inesperado al abrir la imagen: {e}")
-        else:
-            st.sidebar.warning(f"No se encontró la imagen: {image_filename}")
-
-    except Exception as e:
-        st.sidebar.warning(f"No se pudo cargar imagen lateral: {e}")
+    año = fecha.year
+    primer_dia = pd.Timestamp(f"{año}-01-01")
+    offset = (3 - primer_dia.weekday()) % 7
+    primer_jueves = primer_dia + pd.Timedelta(days=offset)
+    if fecha < primer_jueves:
+        año -= 1
+        primer_dia = pd.Timestamp(f"{año}-01-01")
+        offset = (3 - primer_dia.weekday()) % 7
+        primer_jueves = primer_dia + pd.Timedelta(days=offset)
+    dias = (fecha - primer_jueves).days
+    semana = (dias // 7) + 1
+    return f"{año}-S{str(semana).zfill(2)}"
 
 
 # =========================================================
-# CARGA DE DATOS OPERATIVOS
+# CARGA Y ENRIQUECIMIENTO
 # =========================================================
-def actividad_github():
-    """
-    Carga los archivos de saturación y tractos desde GitHub RAW.
-    """
-    chile_tz = pytz.timezone("America/Santiago")
-    fecha_local = datetime.now(chile_tz).strftime("%Y_%m_%d")
+def cargar_maxcube():
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo(REPO_NAME)
+    df = leer_csv_github(repo, ARCHIVO_MAXCUBE)
 
-    saturacion_file = f"historico_saturaciones_{fecha_local}.csv"
-    tractos_file = "Tractos_Transito_Pre_primaria.csv"
+    if df.empty:
+        return df
 
-    df_satu = leer_csv_github_raw(saturacion_file)
-    df_T_Pre_Primaria = leer_csv_github_raw(tractos_file)
+    df.columns = [c.strip() for c in df.columns]
 
-    if not df_satu.empty:
-        df_satu.columns = [str(c).strip() for c in df_satu.columns]
+    columnas_esperadas = [
+        "Bitácora", "Nro carga", "Fecha de despacho", "Hora de despacho",
+        "Destino Agencia concat", "PROVEEDOR", "Patente vehículo",
+        "Viajes", "Bultos despachados", "Bultos empacados",
+    ]
+    for col in columnas_esperadas:
+        if col not in df.columns:
+            df[col] = ""
 
-        if "Fecha" in df_satu.columns:
-            df_satu["Fecha"] = pd.to_datetime(
-                df_satu["Fecha"],
-                errors="coerce"
-            )
+    if "Patente rampla" not in df.columns:
+        df["Patente rampla"] = ""
 
-            ultima = df_satu["Fecha"].max()
+    df["Patente rampla"] = (
+        df["Patente rampla"].astype(str)
+        .str.replace('="', '', regex=False).str.replace('"', '', regex=False)
+        .str.strip().str.upper()
+    )
+    df["Patente vehículo"] = (
+        df["Patente vehículo"].astype(str)
+        .str.replace('="', '', regex=False).str.replace('"', '', regex=False)
+        .str.strip().str.upper()
+    )
 
-            if pd.notna(ultima):
-                st.session_state["ultima_actualizacion_real"] = ultima
+    df["Fecha de despacho"] = pd.to_datetime(df["Fecha de despacho"], dayfirst=True, errors="coerce")
+    df["Hora de despacho"] = df["Hora de despacho"].astype(str).str.strip()
+    df["Fecha despacho dt"] = pd.to_datetime(
+        df["Fecha de despacho"].dt.strftime("%d/%m/%Y") + " " + df["Hora de despacho"],
+        dayfirst=True, errors="coerce"
+    )
+    df["Fecha de despacho"] = df["Fecha de despacho"].dt.strftime("%d/%m/%Y")
 
-        if "Saturación" in df_satu.columns:
-            saturacion = df_satu["Saturación"].iloc[-1]
-        else:
-            saturacion = 0
+    df["Bultos despachados"] = pd.to_numeric(df["Bultos despachados"], errors="coerce").fillna(0)
+    df["Bultos empacados"] = pd.to_numeric(df["Bultos empacados"], errors="coerce").fillna(0)
+    df["Viajes"] = pd.to_numeric(df["Viajes"], errors="coerce").fillna(1)
 
-        if "N° de pallets" in df_satu.columns:
-            n_pallets = df_satu["N° de pallets"].iloc[-1]
-        else:
-            n_pallets = 0
+    df["Fecha"] = df["Fecha despacho dt"].dt.date
+    df["Año-Semana"] = df["Fecha despacho dt"].apply(calcular_semana_bimbo)
+    df["Mes"] = df["Fecha despacho dt"].dt.strftime("%Y-%m")
 
+    df["Destino Agencia concat"] = (
+        df["Destino Agencia concat"].astype(str)
+        .str.upper()
+        .str.replace("\xa0", " ", regex=False)
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)
+        .str.replace(r"\s*/\s*", " / ", regex=True)
+    )
+    df["Destino Agencia concat"] = df["Destino Agencia concat"].apply(normalizar_destino)
+    df["Capacidad 100%"] = df["Destino Agencia concat"].apply(obtener_capacidad)
+
+    # Override rampla (solo LO ESPEJO y EL PINAR)
+    mask_destinos = df["Destino Agencia concat"].isin(DESTINOS_RAMPLA_RULE)
+    cap_por_rampla = df["Patente rampla"].map(CAPACIDAD_RAMPLA_ESPEJO_PINAR)
+    df.loc[mask_destinos & cap_por_rampla.notna(), "Capacidad 100%"] = cap_por_rampla
+
+    # Override proveedor 2200
+    df.loc[
+        df["PROVEEDOR"].astype(str).str.strip().str.upper() == PROVEEDOR_CAP_2200.upper(),
+        "Capacidad 100%"
+    ] = 2200
+
+    df["Uso MaxCube %"] = (df["Bultos despachados"] / df["Capacidad 100%"] * 100).round(2)
+    df["Gap a 100%"] = df["Capacidad 100%"] - df["Bultos despachados"]
+
+    df = df.sort_values(
+        ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
+        ascending=[True, True, True, True]
+    )
+
+    return df
+
+
+# =========================================================
+# AUXILIARES
+# =========================================================
+def semaforo(valor):
+    if pd.isna(valor):
+        return "⚪"
+    elif valor < 90:
+        return "🔴"
+    elif valor < 100:
+        return "🟠"
     else:
-        saturacion = 0
-        n_pallets = 0
-
-    return df_satu, saturacion, n_pallets, df_T_Pre_Primaria
+        return "🟢"
 
 
-# =========================================================
-# GAUGE ECHARTS
-# =========================================================
-def get_gauge_options(saturacion, n_pallets):
-    """
-    Construye el gráfico tipo gauge.
-    Protegido contra valores vacíos, None o texto.
-    """
-    saturacion = pd.to_numeric(saturacion, errors="coerce")
-    n_pallets = pd.to_numeric(n_pallets, errors="coerce")
+def resumen_por_destino(f):
+    if f.empty:
+        return pd.DataFrame()
+    resumen = (
+        f.groupby("Destino Agencia concat", as_index=False)
+        .agg(
+            Bultos=("Bultos despachados", "sum"),
+            Viajes=("Viajes", "sum"),
+            Capacidad=("Capacidad 100%", "sum"),
+            Gap=("Gap a 100%", "sum")
+        )
+    )
+    resumen["Uso MaxCube %"] = (resumen["Bultos"] / resumen["Capacidad"] * 100).round(2)
+    resumen["Semáforo"] = resumen["Uso MaxCube %"].apply(semaforo)
+    resumen = resumen.sort_values("Uso MaxCube %", ascending=True)
+    return resumen
 
-    if pd.isna(saturacion):
-        saturacion = 0
 
-    if pd.isna(n_pallets):
-        n_pallets = 0
+def metricas_globales(f):
+    if f.empty:
+        return 0, 0, 0, 0, 0
 
-    saturacion = round(float(saturacion), 2)
-    n_pallets = int(n_pallets)
+    f_aux = f.copy()
+    f_aux["Bultos"] = pd.to_numeric(f_aux["Bultos despachados"], errors="coerce").fillna(0)
+    f_aux["Capacidad"] = pd.to_numeric(f_aux["Capacidad 100%"], errors="coerce")
 
-    return {
-        "series": [
-            {
-                "type": "gauge",
-                "startAngle": 90,
-                "endAngle": -270,
-                "pointer": {
-                    "show": False
-                },
-                "progress": {
-                    "show": True,
-                    "overlap": False,
-                    "roundCap": True,
-                    "clip": False,
-                    "itemStyle": {
-                        "borderColor": "#464646"
-                    }
-                },
-                "axisLine": {
-                    "lineStyle": {
-                        "width": 10
-                    }
-                },
-                "splitLine": {
-                    "show": False,
-                    "distance": 0,
-                    "length": 10
-                },
-                "axisTick": {
-                    "show": False
-                },
-                "axisLabel": {
-                    "show": False
-                },
-                "data": [
-                    {
-                        "value": saturacion,
-                        "name": "Planta IDEAL \n \n % LPNs Empacados",
-                        "title": {
-                            "offsetCenter": ["0%", "-50%"],
-                            "fontWeight": "bold"
-                        },
-                        "detail": {
-                            "valueAnimation": True,
-                            "offsetCenter": ["0%", "-10%"]
-                        }
-                    },
-                    {
-                        "value": n_pallets,
-                        "name": "N° de pallets",
-                        "title": {
-                            "offsetCenter": ["0%", "20%"],
-                            "fontWeight": "bold"
-                        },
-                        "detail": {
-                            "offsetCenter": ["0%", "45%"]
-                        },
-                        "formatter": "{value}",
-                        "show": True
-                    }
-                ],
-                "title": {
-                    "fontSize": 14
-                },
-                "detail": {
-                    "width": 70,
-                    "height": 20,
-                    "fontSize": 20,
-                    "color": "inherit",
-                    "borderColor": "inherit",
-                    "borderRadius": 40,
-                    "borderWidth": 1,
-                    "formatter": "{value}"
-                }
-            }
-        ]
-    }
+    total_bultos = f_aux["Bultos"].sum()
+    total_viajes = pd.to_numeric(f_aux["Viajes"], errors="coerce").fillna(0).sum()
+    total_destinos = f_aux["Destino Agencia concat"].nunique()
+
+    f_valid = f_aux[(f_aux["Capacidad"].notna()) & (f_aux["Capacidad"] > 0)].copy()
+
+    if f_valid.empty:
+        uso_global = 0
+    else:
+        # Agrupar por destino → capar bultos a capacidad → calcular uso global
+        # Esto evita que destinos sobre 100% inflen el promedio global
+        resumen = f_valid.groupby("Destino Agencia concat").agg(
+            Bultos=("Bultos", "sum"),
+            Capacidad=("Capacidad", "sum")
+        )
+        resumen["Bultos capados"] = resumen[["Bultos", "Capacidad"]].min(axis=1)
+        uso_global = round(
+            resumen["Bultos capados"].sum() / resumen["Capacidad"].sum() * 100, 2
+        )
+
+    total_gap = pd.to_numeric(f_aux["Gap a 100%"], errors="coerce").fillna(0).sum()
+
+    return total_bultos, total_viajes, total_destinos, uso_global, total_gap
 
 
 # =========================================================
-# MAIN APP
+# APP
 # =========================================================
 def main():
+    chile_tz = pytz.timezone(ZONA_HORARIA)
+    st.session_state["ultima_actualizacion_real"] = datetime.now(chile_tz)
 
-    # -----------------------------------------------------
-    # CSS
-    # -----------------------------------------------------
-    load_css("style.css")
+    st.title("📦 MaxCube – Transporte Primaria")
+    st.caption("Fuente: GitHub /data/MAXCUBE_Primaria.csv")
 
-    # -----------------------------------------------------
-    # SIDEBAR IMAGE
-    # -----------------------------------------------------
-    load_sidebar_image("OsitoTierno.png")
-
-    # -----------------------------------------------------
-    # LOGO Y TÍTULO
-    # -----------------------------------------------------
-    logo_base64 = load_image_base64("IDEAL.jfif")
-
-    if logo_base64:
-        st.markdown(
-            f"""
-            <div style="display: flex; align-items: center;">
-                <img src="data:image/jpeg;base64,{logo_base64}" 
-                     alt="Logo" 
-                     style="width: 240px; margin-right: 10px;">
-                <h1 style="margin-bottom: 0;">
-                    Logística: Monitoreo transportación pre - primaria.
-                </h1>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    else:
-        st.title("Logística: Monitoreo transportación pre - primaria.")
-
-    st.caption("Fuente: GitHub RAW /data")
-
-    # -----------------------------------------------------
-    # BOTÓN ACTUALIZAR
-    # -----------------------------------------------------
     if st.sidebar.button("🔄 Actualizar datos"):
-        st.cache_data.clear()
         st.rerun()
 
-    # -----------------------------------------------------
-    # CARGA DATOS
-    # -----------------------------------------------------
-    df_satu, saturacion, n_pallets, df_T_Pre_Primaria = actividad_github()
+    df = cargar_maxcube()
 
-    # -----------------------------------------------------
-    # COLUMNAS PRINCIPALES
-    # -----------------------------------------------------
-    col1, col2, col3 = st.columns([1, 2, 2])
+    if df.empty:
+        st.warning("El archivo MAXCUBE no contiene registros.")
+        return
 
-    # =====================================================
-    # COLUMNA 1: GAUGE
-    # =====================================================
-    with col1:
-        st_echarts(
-            get_gauge_options(saturacion, n_pallets),
-            height=400
-        )
+    # SIDEBAR
+    with st.sidebar:
+        st.header("🔎 Filtros")
+        modo = st.radio("Periodo", ["Día", "Semana", "Mes"], index=0)
+        f = df.copy()
 
-    # =====================================================
-    # COLUMNA 2: SATURACIÓN DIARIA
-    # =====================================================
-    with col2:
-        if not df_satu.empty:
-            if "Fecha" in df_satu.columns and "Saturación" in df_satu.columns:
-
-                df_satu["Fecha"] = pd.to_datetime(
-                    df_satu["Fecha"],
-                    errors="coerce"
-                )
-
-                df_satu["Saturación"] = pd.to_numeric(
-                    df_satu["Saturación"],
-                    errors="coerce"
-                )
-
-                df_satu_plot = df_satu.dropna(
-                    subset=["Fecha", "Saturación"]
-                ).copy()
-
-                if not df_satu_plot.empty:
-
-                    chile_tz = pytz.timezone("America/Santiago")
-                    fecha_titulo = datetime.now(chile_tz).strftime("%d/%m/%Y")
-
-                    fig_daily = px.line(
-                        df_satu_plot,
-                        x="Fecha",
-                        y="Saturación",
-                        title=f"% de Pallets Empacados en planta Ideal - {fecha_titulo}"
-                    )
-
-                    fig_daily.update_traces(
-                        mode="lines+markers",
-                        marker=dict(
-                            symbol="circle",
-                            size=8,
-                            color="#1C306A"
-                        ),
-                        line=dict(
-                            dash="solid",
-                            color="#1C306A"
-                        )
-                    )
-
-                    fig_daily.update_layout(
-                        title=dict(
-                            text=f"% de Pallets Empacados en planta Ideal - {fecha_titulo}",
-                            font=dict(
-                                size=20,
-                                color="black",
-                                family="Arial"
-                            ),
-                            x=0.5,
-                            xanchor="center"
-                        ),
-                        yaxis_title=dict(
-                            text="(%)",
-                            font=dict(
-                                size=20,
-                                color="black",
-                                family="Arial"
-                            )
-                        ),
-                        xaxis_title=dict(
-                            text="",
-                            font=dict(
-                                size=14,
-                                color="black",
-                                family="Arial"
-                            )
-                        ),
-                        yaxis=dict(
-                            tickmode="linear",
-                            tick0=0,
-                            dtick=10,
-                            tickfont=dict(
-                                size=14,
-                                color="black",
-                                family="Arial"
-                            ),
-                            titlefont=dict(
-                                color="black"
-                            )
-                        ),
-                        xaxis=dict(
-                            tickfont=dict(
-                                size=14,
-                                color="black",
-                                family="Arial"
-                            ),
-                            titlefont=dict(
-                                color="black"
-                            )
-                        ),
-                        hoverlabel=dict(
-                            font_size=18,
-                            font_family="Arial",
-                            font_color="white",
-                            bgcolor="black"
-                        ),
-                        annotations=[
-                            dict(
-                                text=(
-                                    "Nota: No se está considerando los pallets de Planta Ideal "
-                                    "empacados que se encuentran en la cinta automática,"
-                                ),
-                                xref="paper",
-                                yref="paper",
-                                x=0.5,
-                                y=-0.25,
-                                showarrow=False,
-                                font=dict(
-                                    size=12,
-                                    color="grey"
-                                ),
-                                xanchor="center"
-                            ),
-                            dict(
-                                text=(
-                                    "porque no es posible obtener esa información desde WMS "
-                                    "y está relacionado a procesos operativos."
-                                ),
-                                xref="paper",
-                                yref="paper",
-                                x=0.5,
-                                y=-0.30,
-                                showarrow=False,
-                                font=dict(
-                                    size=12,
-                                    color="grey"
-                                ),
-                                xanchor="center"
-                            )
-                        ]
-                    )
-
-                    fig_daily.add_hline(
-                        y=100,
-                        line_dash="dash",
-                        line_color="red",
-                        line_width=2
-                    )
-
-                    fig_daily.add_hline(
-                        y=0,
-                        line_dash="dash",
-                        line_color="#FFFFFF",
-                        line_width=2
-                    )
-
-                    fig_daily.add_hline(
-                        y=80,
-                        line_dash="dash",
-                        line_color="#FFA500",
-                        line_width=2
-                    )
-
-                    st.plotly_chart(
-                        fig_daily,
-                        use_container_width=True
-                    )
-
-                else:
-                    st.warning(
-                        "El archivo de saturación no tiene datos válidos para graficar."
-                    )
-
-            else:
-                st.warning(
-                    "El archivo de saturación no contiene las columnas esperadas: Fecha y Saturación."
-                )
-
+        if modo == "Día":
+            fechas_validas = sorted(f["Fecha"].dropna().unique())
+            fecha_sel = st.selectbox("Fecha", fechas_validas, index=len(fechas_validas) - 1 if fechas_validas else 0)
+            f = f[f["Fecha"] == fecha_sel]
+        elif modo == "Semana":
+            semanas_validas = sorted(f["Año-Semana"].dropna().unique())
+            semana_sel = st.selectbox("Semana", semanas_validas, index=len(semanas_validas) - 1 if semanas_validas else 0)
+            f = f[f["Año-Semana"] == semana_sel]
         else:
-            st.warning(
-                "No se encontró información de saturación para la fecha actual."
-            )
+            meses_validos = sorted(f["Mes"].dropna().unique())
+            mes_sel = st.selectbox("Mes", meses_validos, index=len(meses_validos) - 1 if meses_validos else 0)
+            f = f[f["Mes"] == mes_sel]
 
-    # =====================================================
-    # COLUMNA 3: TRACTOS EN TRÁNSITO
-    # =====================================================
-    with col3:
-        st.markdown(
-            """
-            <h3 style='text-align: center;'>
-                Tractos en tránsito planta - CEDIS
-            </h3>
-            """,
-            unsafe_allow_html=True
+        destinos = sorted(f["Destino Agencia concat"].dropna().astype(str).unique())
+        destino_sel = st.multiselect("Destino", destinos)
+        proveedores = sorted(f["PROVEEDOR"].dropna().astype(str).unique())
+        prov_sel = st.multiselect("Proveedor", proveedores)
+        patentes_vehiculo = sorted([p for p in f["Patente vehículo"].dropna().astype(str).unique() if p.strip()])
+        pat_veh_sel = st.multiselect("Patente vehículo", patentes_vehiculo)
+        patentes = sorted([p for p in f["Patente rampla"].dropna().astype(str).unique() if p.strip()])
+        pat_sel = st.multiselect("Patente rampla", patentes)
+
+        if destino_sel:
+            f = f[f["Destino Agencia concat"].isin(destino_sel)]
+        if prov_sel:
+            f = f[f["PROVEEDOR"].isin(prov_sel)]
+        if pat_veh_sel:
+            f = f[f["Patente vehículo"].isin(pat_veh_sel)]
+        if pat_sel:
+            f = f[f["Patente rampla"].isin(pat_sel)]
+
+    f = f.sort_values(
+        ["Fecha despacho dt", "Destino Agencia concat", "Bitácora", "Nro carga"],
+        ascending=[True, True, True, True]
+    )
+
+    # KPIs
+    total_bultos, total_viajes, total_destinos, uso_global, total_gap = metricas_globales(f)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("📦 Bultos", f"{int(total_bultos):,}".replace(",", "."))
+    c2.metric("🚚 Viajes", f"{int(total_viajes):,}".replace(",", "."))
+    c3.metric("📍 Destinos", total_destinos)
+    c4.metric("📊 Uso global %", f"{uso_global}%")
+    c5.metric("📉 Gap total", f"{int(total_gap):,}".replace(",", "."))
+
+    st.divider()
+
+    # RESUMEN POR DESTINO
+    df_dest = resumen_por_destino(f)
+    st.subheader("📋 Resumen por destino")
+    st.data_editor(
+        df_dest[["Semáforo", "Destino Agencia concat", "Viajes", "Bultos", "Capacidad", "Uso MaxCube %", "Gap"]],
+        use_container_width=True, disabled=True, height=420, key="tabla_resumen_destino"
+    )
+
+    # ALERTAS
+    st.subheader("🚨 Alertas automáticas")
+    criticos = df_dest[df_dest["Uso MaxCube %"] < 90]
+    sobrecap = df_dest[df_dest["Gap"] < 0]
+    if criticos.empty and sobrecap.empty:
+        st.success("✅ No se detectan alertas críticas en el periodo seleccionado.")
+    else:
+        if not criticos.empty:
+            st.error("🔴 Destinos bajo 90% de uso MaxCube: " + ", ".join(criticos["Destino Agencia concat"].astype(str).tolist()))
+        if not sobrecap.empty:
+            st.warning("⚠️ Destinos sobre 100% de capacidad: " + ", ".join(sobrecap["Destino Agencia concat"].astype(str).tolist()))
+
+    # RANKING
+    st.subheader("🏆 Ranking automático")
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        st.markdown("### 🔻 Top 5 peores destinos")
+        st.data_editor(
+            df_dest.sort_values("Uso MaxCube %", ascending=True).head(5)[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
+            use_container_width=True, height=220, disabled=True, key="ranking_peores"
+        )
+    with col_r2:
+        st.markdown("### 🟢 Top 5 mejores destinos")
+        st.data_editor(
+            df_dest.sort_values("Uso MaxCube %", ascending=False).head(5)[["Destino Agencia concat", "Uso MaxCube %", "Gap"]],
+            use_container_width=True, height=220, disabled=True, key="ranking_mejores"
         )
 
-        st.markdown(
-            """
-            <style>
-            .blue-header table {
-                width: 100%;
-                border-collapse: collapse;
-            }
-            .blue-header thead tr th {
-                background-color: #1C306A;
-                color: white;
-                padding: 10px;
-                text-align: center;
-            }
-            .blue-header tbody tr td {
-                text-align: center;
-                padding: 10px;
-                font-weight: bold;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
+    # VISUAL 1
+    st.subheader("📊 Uso MaxCube % por destino")
+    fig_uso = px.bar(
+        df_dest.sort_values("Uso MaxCube %", ascending=True),
+        x="Uso MaxCube %", y="Destino Agencia concat", orientation="h",
+        text="Uso MaxCube %", color="Uso MaxCube %", color_continuous_scale="RdYlGn"
+    )
+    fig_uso.add_vline(x=100, line_dash="dash", line_color="red", line_width=2)
+    fig_uso.update_layout(height=600, xaxis_title="Uso MaxCube %", yaxis_title="Destino", coloraxis_showscale=False)
+    st.plotly_chart(fig_uso, use_container_width=True)
 
-        if not df_T_Pre_Primaria.empty:
-            try:
-                html_table = (
-                    df_T_Pre_Primaria
-                    .style
-                    .set_table_attributes('class="blue-header"')
-                    .to_html()
-                )
+    # VISUAL 2
+    st.subheader("📉 Gap a 100% por destino")
+    fig_gap = px.bar(
+        df_dest.sort_values("Gap", ascending=True),
+        x="Gap", y="Destino Agencia concat", orientation="h", text="Gap"
+    )
+    fig_gap.add_vline(x=0, line_dash="dash", line_color="black", line_width=1)
+    fig_gap.update_layout(height=600, xaxis_title="Gap a 100% (bultos)", yaxis_title="Destino")
+    st.plotly_chart(fig_gap, use_container_width=True)
 
-                st.markdown(
-                    html_table,
-                    unsafe_allow_html=True
-                )
+    # DETALLE
+    st.subheader("📄 Detalle de despachos (orden ascendente)")
+    #_detalle = [
+    #   "Fecha de despacho", "Hora de despacho", "Destino Agencia concat", "PROVEEDOR",
+    #   "Patente vehículo", "Patente rampla", "Capacidad 100%", "Bultos despachados",
+    #   "Uso MaxCube %", "Gap a 100%", "Bitácora", "Nro carga",
+    # ]
 
-            except Exception as e:
-                st.warning("No se pudo renderizar la tabla con estilo.")
-                st.exception(e)
-                st.dataframe(
-                    df_T_Pre_Primaria,
-                    use_container_width=True
-                )
-        else:
-            st.warning(
-                "No se encontró información de tractos en tránsito."
-            )
+    _detalle = [
+        "Fecha de despacho", "Hora de despacho", "Destino Agencia concat", "PROVEEDOR",
+        "Patente vehículo", "Patente rampla", "Capacidad 100%",
+        "Bultos despachados", "Bultos empacados",
+        "Uso MaxCube %", "Gap a 100%", "Bitácora", "Nro carga",
+    ]    
+    
+    _detalle = [c for c in _detalle if c in f.columns]
+    st.data_editor(f[_detalle], use_container_width=True, height=550, disabled=True, key="detalle_final")
 
-    # -----------------------------------------------------
-    # DIAGNÓSTICO OPCIONAL EN SIDEBAR
-    # -----------------------------------------------------
-    with st.sidebar.expander("🛠 Diagnóstico de fuente"):
-        chile_tz = pytz.timezone("America/Santiago")
-        fecha_local = datetime.now(chile_tz).strftime("%Y_%m_%d")
-
-        st.write("Repositorio:", f"{GITHUB_USER}/{GITHUB_REPO}")
-        st.write("Branch:", GITHUB_BRANCH)
-        st.write("Carpeta:", GITHUB_FOLDER)
-        st.write(
-            "Archivo saturación:",
-            f"historico_saturaciones_{fecha_local}.csv"
-        )
-        st.write(
-            "Archivo tractos:",
-            "Tractos_Transito_Pre_primaria.csv"
-        )
-
-        if "ultima_actualizacion_real" in st.session_state:
-            st.write(
-                "Última actualización real:",
-                st.session_state["ultima_actualizacion_real"]
-            )
+    # DESCARGA
+    st.download_button(
+        "⬇️ Descargar CSV filtrado",
+        data=f.to_csv(index=False).encode("utf-8"),
+        file_name="maxcube_filtrado.csv",
+        mime="text/csv"
+    )
 
 
-# =========================================================
-# EJECUCIÓN
-# =========================================================
 if __name__ == "__main__":
     main()
