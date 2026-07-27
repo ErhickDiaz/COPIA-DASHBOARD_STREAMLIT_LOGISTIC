@@ -29,6 +29,8 @@ def main():
 
     df = cargar_datos()
 
+    st.write("Filas cargadas:", len(df))2st.write("Última transferencia:", df["FECHA_TRANSFERENCIA"].max())
+
     st.success("✅ Datos cargados correctamente")
 
      
