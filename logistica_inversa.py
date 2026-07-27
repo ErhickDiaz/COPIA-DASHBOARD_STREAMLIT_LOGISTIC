@@ -29,16 +29,6 @@ def main():
 
     df = cargar_datos()
 
-    st.write("Filas cargadas:", len(df))
-
-    ruta = os.path.join("data", "Control_Logistico.csv")
-    
-    st.write("Ruta utilizada:")
-    st.code(ruta)
-    
-    st.write("Columnas:")
-    st.write(list(df.columns))
-
     st.success("✅ Datos cargados correctamente")
 
      
