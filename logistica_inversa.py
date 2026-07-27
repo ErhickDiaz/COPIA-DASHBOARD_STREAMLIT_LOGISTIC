@@ -13,7 +13,7 @@ def main():
     # -----------------------------
     # CARGA DE DATOS
     # -----------------------------
-    @st.cache_data
+    
     def cargar_datos():
         ruta = os.path.join("data", "Control_Logistico.csv")
 
