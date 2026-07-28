@@ -32,57 +32,7 @@ def main():
 
     st.success("✅ Datos cargados correctamente")
 
-    # =====================================
-    # KPI LOGÍSTICA INVERSA PLANTA IDEAL
-    # =====================================
     
-    df_planta_salida = df_filtrado[
-        df_filtrado["ORIGEN"].astype(str).str.upper().str.contains("PLANTA IDEAL", na=False)
-    ]
-    
-    df_planta_llegada = df_filtrado[
-        df_filtrado["DESTINO"].astype(str).str.upper().str.contains("PLANTA IDEAL", na=False)
-    ]
-    
-    # Bandejas enviadas desde Planta Ideal
-    salida_bg = df_planta_salida["CANT_ENVIADA"].sum()
-    
-    # Bandejas que vienen hacia Planta Ideal
-    llegada_bg = df_planta_llegada["CANT_ENVIADA"].sum()
-    
-    # Pendientes hacia Planta Ideal
-    pendientes_planta = df_planta_llegada[
-        df_planta_llegada["ESTADO"] != "Receptado"
-    ]["CANT_ENVIADA"].sum()
-    
-    # Diferencias asociadas a Planta Ideal
-    diferencias_planta = df_planta_llegada["DIFERENCIA"].abs().sum()
-    
-    st.subheader("🏭 Control Planta Ideal")
-    
-    k1, k2, k3, k4 = st.columns(4)
-    
-    k1.metric(
-        "📦 Salidas desde Planta Ideal",
-        f"{int(salida_bg):,}".replace(",", ".")
-    )
-    
-    k2.metric(
-        "🚛 Hacia Planta Ideal",
-        f"{int(llegada_bg):,}".replace(",", ".")
-    )
-    
-    k3.metric(
-        "🕒 Pendiente Recepción",
-        f"{int(pendientes_planta):,}".replace(",", ".")
-    )
-    
-    k4.metric(
-        "⚠️ Diferencias",
-        f"{int(diferencias_planta):,}".replace(",", ".")
-    )
-    
-    st.divider()
          
 
     # -----------------------------
@@ -170,6 +120,60 @@ def main():
         ascending=True
     )
 
+
+    # =====================================
+    # KPI LOGÍSTICA INVERSA PLANTA IDEAL
+    # =====================================
+    
+    df_planta_salida = df_filtrado[
+        df_filtrado["ORIGEN"].astype(str).str.upper().str.contains("PLANTA IDEAL", na=False)
+    ]
+    
+    df_planta_llegada = df_filtrado[
+        df_filtrado["DESTINO"].astype(str).str.upper().str.contains("PLANTA IDEAL", na=False)
+    ]
+    
+    # Bandejas enviadas desde Planta Ideal
+    salida_bg = df_planta_salida["CANT_ENVIADA"].sum()
+    
+    # Bandejas que vienen hacia Planta Ideal
+    llegada_bg = df_planta_llegada["CANT_ENVIADA"].sum()
+    
+    # Pendientes hacia Planta Ideal
+    pendientes_planta = df_planta_llegada[
+        df_planta_llegada["ESTADO"] != "Receptado"
+    ]["CANT_ENVIADA"].sum()
+    
+    # Diferencias asociadas a Planta Ideal
+    diferencias_planta = df_planta_llegada["DIFERENCIA"].abs().sum()
+    
+    st.subheader("🏭 Control Planta Ideal")
+    
+    k1, k2, k3, k4 = st.columns(4)
+    
+    k1.metric(
+        "📦 Salidas desde Planta Ideal",
+        f"{int(salida_bg):,}".replace(",", ".")
+    )
+    
+    k2.metric(
+        "🚛 Hacia Planta Ideal",
+        f"{int(llegada_bg):,}".replace(",", ".")
+    )
+    
+    k3.metric(
+        "🕒 Pendiente Recepción",
+        f"{int(pendientes_planta):,}".replace(",", ".")
+    )
+    
+    k4.metric(
+        "⚠️ Diferencias",
+        f"{int(diferencias_planta):,}".replace(",", ".")
+    )
+    
+    st.divider()
+
+    
     # -----------------------------
     # VALIDAR SI HAY DATOS
     # -----------------------------
