@@ -15,7 +15,7 @@ def main():
     # -----------------------------
     @st.cache_data(ttl=300)
     def cargar_datos():
-        ruta = os.path.join("data", "Control_Logistico.csv")
+        ruta = os.path.join("data", "Historico_Control_Logistico.csv")
 
         df = pd.read_csv(
             ruta,
