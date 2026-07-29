@@ -14,7 +14,7 @@ def main():
     # -----------------------------
     # CARGA DE DATOS
     # -----------------------------
-    @st.cache_data(ttl=300)
+    @st.cache_data(ttl=200)
     def cargar_datos():
         ruta = os.path.join("data", "Historico_Control_Logistico.csv")
 
