@@ -441,6 +441,7 @@ def main():
     #   "Uso MaxCube %", "Gap a 100%", "Bitácora", "Nro carga",
     # ]
 
+    
     _detalle = [
         "Fecha de despacho", "Hora de despacho", "Destino Agencia concat", "PROVEEDOR",
         "Patente vehículo", "Patente rampla", "Capacidad 100%",
