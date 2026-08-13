@@ -1,305 +1,396 @@
 import streamlit as st
-import mygeotab
-from datetime import datetime, timedelta
-import time
-import requests
-import os
-from shareplum import Site
-from shareplum.site import Version
-from shareplum import Office365
 import pandas as pd
-import re
+from github import Github
+from io import StringIO
+from datetime import datetime
+import pytz
+from streamlit_autorefresh import st_autorefresh
 import base64
-from io import StringIO, BytesIO
+import html
 
+# =========================================================
+# CONFIG
+# =========================================================
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
+REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
+GITHUB_FOLDER = "data"
+ARCHIVO_MAXCUBE = "MAXCUBE_Primaria.csv"
+ARCHIVO_TIEMPOS = "tiempos_viaje_destino.csv"
+ZONA_HORARIA = "America/Santiago"
+
+# Si un destino todavía no tiene horas definidas en la tabla, se usa este
+# valor por defecto y la fila queda marcada con "⚠ SIN DATO".
+DEFAULT_HORAS_VIAJE = 8.0
+
+# Margen de tolerancia antes de marcar un despacho como "POSIBLE RETRASO"
+# una vez pasada la hora estimada de llegada.
+MARGEN_RETRASO_HORAS = 1.0
+
+# Umbral para pasar de "EN RUTA" a "POR LLEGAR" (última hora antes del ETA).
+UMBRAL_POR_LLEGAR_HORAS = 1.0
+
+
+# =========================================================
+# HELPERS COMPARTIDOS (mismo patrón que el resto de módulos)
+# =========================================================
+def load_css_inline():
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Share+Tech+Mono&display=swap');
+
+        :root{
+            --board-bg:#0A0F1E;
+            --board-panel:#0F1730;
+            --board-row-alt:#121C3B;
+            --board-divider:rgba(255,255,255,0.08);
+            --board-amber:#FFB300;
+            --board-cyan:#7DD8E8;
+            --board-green:#4ADE80;
+            --board-red:#FF4D5E;
+            --board-dim:#5B6683;
+        }
+
+        .board-wrap{
+            background:var(--board-bg);
+            border:1px solid var(--board-divider);
+            border-radius:10px;
+            padding:0 0 6px 0;
+            overflow:hidden;
+            box-shadow:0 20px 50px rgba(0,0,0,0.35);
+        }
+
+        .board-topbar{
+            display:flex;
+            justify-content:space-between;
+            align-items:baseline;
+            padding:18px 26px 10px 26px;
+            border-bottom:1px solid var(--board-divider);
+        }
+
+        .board-title{
+            font-family:'Barlow Condensed',sans-serif;
+            font-weight:700;
+            text-transform:uppercase;
+            letter-spacing:3px;
+            font-size:22px;
+            color:#EAF2FF;
+        }
+
+        .board-clock{
+            font-family:'Share Tech Mono',monospace;
+            font-size:22px;
+            color:var(--board-amber);
+            letter-spacing:2px;
+        }
+
+        .board-header-row, .board-row{
+            display:grid;
+            grid-template-columns: 30% 16% 16% 20% 18%;
+            align-items:center;
+            padding:10px 26px;
+        }
+
+        .board-header-row{
+            font-family:'Barlow Condensed',sans-serif;
+            font-weight:600;
+            text-transform:uppercase;
+            letter-spacing:2px;
+            font-size:13px;
+            color:var(--board-cyan);
+            border-bottom:1px solid var(--board-divider);
+        }
+
+        .board-row{
+            font-family:'Share Tech Mono',monospace;
+            font-size:16px;
+            color:var(--board-amber);
+            border-bottom:1px solid var(--board-divider);
+            position:relative;
+        }
+
+        .board-row:nth-child(even){ background:var(--board-row-alt); }
+
+        .board-row.next-up{ border-left:3px solid var(--board-amber); }
+        .board-row.next-up::before{
+            content:"";
+            position:absolute;
+            left:-1px; top:0; bottom:0;
+            width:3px;
+            background:var(--board-amber);
+            animation:board-pulse 2.4s ease-in-out infinite;
+        }
+
+        @keyframes board-pulse{
+            0%,100%{ opacity:1; }
+            50%{ opacity:.35; }
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .board-row.next-up::before{ animation:none; }
+        }
+
+        .board-destino{ display:flex; flex-direction:column; }
+        .board-destino .carga{
+            font-size:11px;
+            color:var(--board-dim);
+            letter-spacing:1px;
+        }
+        .board-destino .sindato{
+            font-size:10px;
+            color:var(--board-red);
+            letter-spacing:1px;
+        }
+
+        .board-chip{
+            display:inline-block;
+            padding:3px 10px;
+            border-radius:3px;
+            font-size:12px;
+            letter-spacing:1px;
+            border:1px solid currentColor;
+        }
+        .chip-enruta{ color:var(--board-cyan); }
+        .chip-porllegar{ color:var(--board-amber); }
+        .chip-llegado{ color:var(--board-green); }
+        .chip-retraso{ color:var(--board-red); }
+
+        .board-empty{
+            font-family:'Share Tech Mono',monospace;
+            color:var(--board-dim);
+            padding:30px 26px;
+            text-align:center;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def load_image(image_file):
+    with open(image_file, "rb") as f:
+        data = f.read()
+        return base64.b64encode(data).decode()
+
+
+def normalizar_destino(destino):
+    destino = str(destino).upper().replace("\xa0", " ").strip()
+    destino = " ".join(destino.split())
+    partes = [p.strip() for p in destino.split("/") if p.strip()]
+    return " / ".join(partes)
+
+
+def leer_csv_github(repo, filename):
+    try:
+        file_content = repo.get_contents(f"{GITHUB_FOLDER}/{filename}")
+        csv_string = file_content.decoded_content.decode("utf-8")
+        return pd.read_csv(StringIO(csv_string))
+    except Exception as e:
+        st.error(f"No se pudo cargar {filename} desde GitHub: {e}")
+        return pd.DataFrame()
+
+
+# =========================================================
+# CARGA Y CÁLCULO DE ETA
+# =========================================================
+@st.cache_data(ttl=55)
+def cargar_datos_eta():
+    g = Github(GITHUB_TOKEN)
+    repo = g.get_repo(REPO_NAME)
+
+    df = leer_csv_github(repo, ARCHIVO_MAXCUBE)
+    tiempos = leer_csv_github(repo, ARCHIVO_TIEMPOS)
+
+    if df.empty:
+        return df
+
+    df.columns = [c.strip() for c in df.columns]
+
+    # ── Fecha + hora de despacho combinadas ──
+    df["Fecha de despacho"] = pd.to_datetime(df["Fecha de despacho"], dayfirst=True, errors="coerce")
+    df["Hora de despacho"] = df["Hora de despacho"].astype(str).str.strip()
+    df["Fecha_Hora_Despacho"] = pd.to_datetime(
+        df["Fecha de despacho"].dt.strftime("%d/%m/%Y") + " " + df["Hora de despacho"],
+        dayfirst=True, errors="coerce"
+    )
+
+    # ── Destino normalizado (misma lógica que MaxCube_Primaria) ──
+    df["Destino Agencia concat"] = (
+        df["Destino Agencia concat"].astype(str)
+        .str.upper().str.replace("\xa0", " ", regex=False).str.strip()
+    )
+    df["Destino Norm"] = df["Destino Agencia concat"].apply(normalizar_destino)
+
+    # ── Tabla de horas por destino ──
+    if not tiempos.empty:
+        tiempos.columns = [c.strip() for c in tiempos.columns]
+        tiempos["Destino Norm"] = tiempos["Destino"].apply(normalizar_destino)
+        tiempos["Horas_Estimadas"] = pd.to_numeric(tiempos["Horas_Estimadas"], errors="coerce")
+        mapa_horas = dict(zip(tiempos["Destino Norm"], tiempos["Horas_Estimadas"]))
+    else:
+        mapa_horas = {}
+
+    df["Horas Viaje"] = df["Destino Norm"].map(mapa_horas)
+    df["Sin Dato"] = df["Horas Viaje"].isna()
+    df["Horas Viaje"] = df["Horas Viaje"].fillna(DEFAULT_HORAS_VIAJE)
+
+    df["ETA"] = df["Fecha_Hora_Despacho"] + pd.to_timedelta(df["Horas Viaje"], unit="h")
+
+    return df.dropna(subset=["Fecha_Hora_Despacho", "ETA"])
+
+
+def formatear_delta(delta_seg):
+    signo = "-" if delta_seg < 0 else ""
+    delta_seg = abs(int(delta_seg))
+    horas, resto = divmod(delta_seg, 3600)
+    minutos = resto // 60
+    return f"{signo}{horas}h {minutos:02d}m"
+
+
+def calcular_estado(eta, now):
+    delta = (eta - now).total_seconds()
+    if delta > UMBRAL_POR_LLEGAR_HORAS * 3600:
+        return "EN RUTA", "chip-enruta", f"Llega en {formatear_delta(delta)}"
+    elif delta > 0:
+        return "POR LLEGAR", "chip-porllegar", f"Llega en {formatear_delta(delta)}"
+    elif delta > -MARGEN_RETRASO_HORAS * 3600:
+        return "ARRIBO ESTIMADO", "chip-llegado", f"Hace {formatear_delta(-delta)}"
+    else:
+        return "POSIBLE RETRASO", "chip-retraso", f"Atrasado {formatear_delta(-delta)}"
+
+
+# =========================================================
+# APP
+# =========================================================
 def main():
-
-        # Crear DataFrame para el histórico
-    historico_columnas = ['Vehículo', 'ID', 'Hora en Partida', 'Hora en Transito', 'Hora en Destino', 'Fecha']
-    historico_df = pd.DataFrame(columns=historico_columnas)
-
-    # Función para convertir distancia en texto a kilómetros
-    def convertir_distancia_a_km(distancia):
-        # Asume que la distancia es una cadena en formato como '10 km' o '200 m'
-        if 'km' in distancia:
-            return float(distancia.replace(' km', ''))  # Mantener la distancia en kilómetros
-        elif 'm' in distancia:
-            return float(distancia.replace(' m', '')) / 1000  # Convertir metros a kilómetros
-        return None
-
-    # Función para cargar el archivo CSS
     def load_css(file_name):
         with open(file_name) as f:
             st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
-        # Cargar y codificar la imagen
-    def load_image(image_file):
-        with open(image_file, "rb") as f:
-            data = f.read()
-            return base64.b64encode(data).decode()
-        
-    # Cargar el CSS
-    load_css('style.css')
+    load_css("style.css")
+    load_css_inline()
 
-    # Cargar y mostrar la imagen en la barra lateral
-    st.sidebar.image("OsitoTierno.png", use_column_width=True)  # Asegúrate de que la imagen esté en la misma carpeta
+    chile_tz = pytz.timezone(ZONA_HORARIA)
+    now = datetime.now(chile_tz)
+    st.session_state["ultima_actualizacion_real"] = now
 
-    # Título de la página
+    st.sidebar.image("OsitoTierno.png", use_column_width=True)
 
-    # Conéctate a la base de datos de Geotab usando tus credenciales
-    username = st.secrets["username"]
-    password = st.secrets["password"]
-    password2 = st.secrets["password2"]
-    database = st.secrets["database"]
-    api_key = st.secrets["api_key"]
-    mode = 'driving'  # Modo de transporte
-
-    # URL de SharePoint y la carpeta destino
-    sharepoint_url = 'https://gbconnect.sharepoint.com'  # URL corregida de SharePoint
-    site_url = '/sites/Torredetransportacin'  # URL del sitio de SharePoint
-    folder_url = 'Documentos compartidos/Transportación Primaria'  # Carpeta en SharePoint
-
-    destinos_coordenadas = {
-        "LO ESPEJO": {"latitud": -33.536206, "longitud": -70.694935},
-        "VIÑA DEL MAR": {"latitud": -33.1361809, "longitud": -71.5560586},
-        "CEDIS":{"latitud": -33.324003, "longitud": -70.712268},
-        "EL PINAR":{"latitud":-33.491674, "longitud": -70.627633},
-        "TALAGANTE":{"latitud":-33.674750,"longitud":-70.951093},
-        "MELIPILLA":{"latitud":-33.678339,"longitud":-71.229487},
-        "RANCAGUA":{"latitud":-34.162651,"longitud":-70.727089},
-        "LOS ANDES":{"latitud":-34.162651,"longitud":-70.727089}
-    }
-
-    # Autenticación en Office 365 y conexión con SharePoint
-    authcookie = Office365(sharepoint_url, username=username, password=password).GetCookies()
-
-    # Conectar al sitio de SharePoint
-    site = Site(sharepoint_url + site_url, version=Version.v365, authcookie=authcookie)
-
-    # Acceder a la carpeta en SharePoint
-    folder = site.Folder(folder_url)
-
-    # Descargar el primer archivo desde la carpeta de SharePoint
-    file = folder.get_file('Template de programación_Geotab.xlsx')
-    file2 = folder.get_file("Histórico Viajes Primaria.xlsx")
-
-    Programa_rutas = pd.read_excel(file)
-    historico_df = pd.read_excel(file2)
-
-    print(Programa_rutas)
-
-    # Autenticación y creación de la conexión a la API de Geotab
-    api = mygeotab.API(username=username, password=password2, database=database)
-    api.authenticate()
-
-    # Función para obtener las coordenadas de un vehículo y su nombre
-    def get_vehicle_coordinates(vehicle_id):
-        try:
-            # Definir el rango de fechas para la búsqueda
-            to_date = datetime.utcnow()
-            from_date = datetime.utcnow()
-
-            # Obtener los registros de log (LogRecord) para el vehículo
-            log_records = api.get("LogRecord", search={
-                "deviceSearch": {"id": vehicle_id},
-                "fromDate": from_date.isoformat(),
-                "toDate": to_date.isoformat(),
-                "resultsLimit": 1000  # Limitar a 1000 resultados para la paginación
-            })
-
-            # Obtener el vehículo y su nombre desde la API
-            vehicle = api.get("Device", search={"id": vehicle_id})[0]
-            vehicle_name = vehicle.get("name")
-
-            # Si hay registros, tomar el último
-            if log_records:
-                latest_record = log_records[-1]  # Obtener el último registro
-                latitude = latest_record.get("latitude")
-                longitude = latest_record.get("longitude")
-                return {"name": vehicle_name,"ID":vehicle_id, "latitude": latitude, "longitude": longitude}
-            else:
-                return {"name": vehicle_name,"ID":vehicle_id, "latitude": None, "longitude": None}
-        except Exception as e:
-            print(f"Error al obtener las coordenadas del vehículo {vehicle_id}: {e}")
-            return {"name": None,"ID": None ,"latitude": None, "longitude": None}
-
-    # Función para obtener la distancia y duración utilizando la API de Google Directions
-    def get_route_data(origin_lat, origin_lng, dest_lat, dest_lng):
-        url = f'https://maps.googleapis.com/maps/api/directions/json?origin={origin_lat},{origin_lng}&destination={dest_lat},{dest_lng}&mode={mode}&key={api_key}'
-        response = requests.get(url)
-
-        if response.status_code == 200:
-            data = response.json()
-            if data['routes']:
-                route = data['routes'][0]['legs'][0]
-                duration = route['duration']['text']
-                distance = route['distance']['text']
-                return {"distance": distance, "duration": duration}
-            else:
-                return {"distance": None, "duration": None}
-        else:
-            print(f"Error en la solicitud: {response.status_code}")
-            return {"distance": None, "duration": None}
-
-    # Función para convertir el texto de duración en minutos (si es necesario)
-    def duration_to_minutes(duration):
-        # Utilizar expresiones regulares para extraer horas y minutos
-        hours = re.search(r'(\d+)\s*hour', duration)
-        minutes = re.search(r'(\d+)\s*min', duration)
-        
-        # Convertir horas y minutos en enteros
-        total_minutes = 0
-        if hours:
-            total_minutes += int(hours.group(1)) * 60  # 1 hora = 60 minutos
-        if minutes:
-            total_minutes += int(minutes.group(1))
-        
-        return total_minutes
-
-    # Agregar columnas vacías para la distancia y duración en el DataFrame
-    Programa_rutas['Distancia'] = None
-    Programa_rutas["Estado"] = None
-    Programa_rutas["Hora Salida Real"] = None
-    Programa_rutas["Hora Llegada Real"] = None
-
-    print(datetime.now())
-    # Recorrer los vehículos del DataFrame y calcular la ruta hacia el destino
-
-    # Recorrer los vehículos del DataFrame y calcular la ruta hacia el destino
-    for index, row in Programa_rutas.iterrows():
-        vehicle_name = row['Vehículo']
-        destino = row['Destino']
-        vehicle_id = row["ID"]
-        
-        # Obtener las coordenadas del destino
-        destino_coords = destinos_coordenadas.get(destino)
-        dest_lat = destino_coords['latitud']
-        dest_lng = destino_coords['longitud']
-        
-        # Obtener las coordenadas actuales del vehículo
-        vehicle_data = get_vehicle_coordinates(vehicle_id)
-        origin_lat = vehicle_data['latitude']
-        origin_lng = vehicle_data['longitude']
-    
-        # Si se tienen ambas coordenadas, solicitar la ruta
-        if origin_lat is not None and origin_lng is not None:
-            # Obtener los datos de la ruta desde Google Maps API
-            route_data = get_route_data(origin_lat, origin_lng, dest_lat, dest_lng)
-            distancia_texto = route_data['distance']
-            duracion_texto = route_data['duration']
-
-            # Convertir la distancia a kilómetros
-            distancia_a_destino = convertir_distancia_a_km(distancia_texto)
-
-             # Actualizar las columnas de distancia y duración
-            Programa_rutas.at[index, 'Distancia'] = route_data['distance']
-            Programa_rutas.at[index, 'Tiempo Restante'] = route_data['duration']
-            #Programa_rutas = Programa_rutas.drop(columns=['Duration'])
-            # Calcular la "Hora llegada Real"
-            if route_data['duration']:  # Verificar si 'duration' no es None
-                minutes_to_add = duration_to_minutes(route_data['duration'])
-                hora_llegada_real = datetime.now() + timedelta(minutes=minutes_to_add)
-                Programa_rutas.at[index, "Hora Llegada Real"] = hora_llegada_real
-            else:
-                Programa_rutas.at[index, "Hora Llegada Real"] = None
-
-            # Actualizar el estado del camión basado en la distancia (0.2 km)
-            if distancia_a_destino is not None:
-                if distancia_a_destino < 0.3:  # Si la distancia es menor a 0.3 km
-                    # Vehículo en destino
-                    Programa_rutas.at[index, 'Estado'] = "En destino"
-                    Programa_rutas.at[index, 'Hora Llegada Real'] = datetime.now()
-                
-                elif distancia_a_destino > 0.3:
-                    # Vehículo en tránsito
-                    Programa_rutas.at[index, 'Estado'] = "En transito"
-                    Programa_rutas.at[index, 'Hora Salida Real'] = datetime.now()
-
-                print(f"Vehículo: {vehicle_name}, Estado: {Programa_rutas.at[index, 'Estado']}")
-
-            if Programa_rutas.at[index,'Estado'] == "En destino":
-
-                # Mover la información al archivo histórico
-                nuevo_registro_historico = {
-                    'Fecha': datetime.now().date(),
-                    'Vehículo': vehicle_name,
-                    'ID': vehicle_id,
-                    "Salida": Programa_rutas.at[index,"Salida"],
-                    "Destino": Programa_rutas.at[index,"Destino"],
-                    'Hora en Transito': row['Hora Salida Real'],
-                    'Hora Llegada Real': row['Hora Llegada Real'],
-                }
-
-                nuevo_registro_historico_df = pd.DataFrame([nuevo_registro_historico])
-
-                # Concatenar el nuevo registro con el DataFrame histórico
-                historico_df = pd.concat([historico_df, nuevo_registro_historico_df], ignore_index=True)
-
-                historical_data_file = "Histórico Viajes Primaria.xlsx"
-
-                # Guardar el DataFrame actualizado directamente en SharePoint
-                output = StringIO()
-                historico_df.to_excel(output, index=False)
-                folder.upload_file(output.getvalue(), historical_data_file)
-
-                print(f"Archivo '{historical_data_file}' subido exitosamente a SharePoint.")
-
-                # Eliminar el vehículo de la base de datos
-                Programa_rutas.drop(index, inplace=True)
-
-        else:
-            print(f"No se pudieron obtener las coordenadas del vehículo {vehicle_name} (ID: {vehicle_id}).")
-
-    # Mostrar el DataFrame actualizado con las nuevas columnas
-
-    template_programacion = "Template de programación_Geotab.xlsx"
-
-    output = BytesIO()
-    Programa_rutas.to_excel(output, index=False)
-    folder.upload_file(output.getvalue(), template_programacion)
-
-    print(f"Archivo '{template_programacion}' subido exitosamente a SharePoint.")
-        
-    # Ruta del logo
-    logo = "IDEAL.jfif"  # Asegúrate de que la ruta sea correcta
-    # Obtener la imagen codificada
-
-    logo_base64 = load_image(logo)
-
+    logo_base64 = load_image("IDEAL.jfif")
     st.markdown(f"""
-            <div style="display: flex; align-items: center;">
-                <img src="data:image/jpeg;base64,{logo_base64}" alt="Logo" style="width: 240px; margin-right: 10px;">
-                <h1 style="margin-bottom: 0;">Logística: Monitoreo transportación primaria.</h1>
+        <div style="display: flex; align-items: center;">
+            <img src="data:image/jpeg;base64,{logo_base64}" style="width: 220px; margin-right: 15px;">
+            <h1>Logística: ETA Primaria</h1>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.caption("Fuente: GitHub /data/MAXCUBE_Primaria.csv + /data/tiempos_viaje_destino.csv")
+
+    st_autorefresh(interval=60000, key="eta_refresh")
+
+    df = cargar_datos_eta()
+
+    if df.empty:
+        st.warning("⚠️ No hay datos disponibles todavía.")
+        return
+
+    # ── FILTROS ──
+    with st.sidebar:
+        st.header("🔎 Filtros")
+        fechas_validas = sorted(df["Fecha_Hora_Despacho"].dt.date.dropna().unique())
+        fecha_sel = st.selectbox(
+            "Fecha de despacho", fechas_validas,
+            index=len(fechas_validas) - 1 if fechas_validas else 0
+        )
+        f = df[df["Fecha_Hora_Despacho"].dt.date == fecha_sel].copy()
+
+        destinos = sorted(f["Destino Norm"].dropna().unique())
+        destino_sel = st.multiselect("Destino", destinos)
+        if destino_sel:
+            f = f[f["Destino Norm"].isin(destino_sel)]
+
+    # ── ESTADO POR FILA ──
+    estados = f["ETA"].apply(lambda eta: calcular_estado(eta, now))
+    f["Estado"] = [e[0] for e in estados]
+    f["Estado Clase"] = [e[1] for e in estados]
+    f["Tiempo"] = [e[2] for e in estados]
+
+    estado_sel = st.sidebar.multiselect("Estado", sorted(f["Estado"].unique()))
+    if estado_sel:
+        f = f[f["Estado"].isin(estado_sel)]
+
+    f = f.sort_values("ETA", ascending=True)
+
+    # ── KPIs ──
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🚛 Despachos", len(f))
+    c2.metric("🛫 En ruta", int((f["Estado"] == "EN RUTA").sum()))
+    c3.metric("🟡 Por llegar", int((f["Estado"] == "POR LLEGAR").sum()))
+    c4.metric("🔴 Posible retraso", int((f["Estado"] == "POSIBLE RETRASO").sum()))
+
+    sin_dato = sorted(f.loc[f["Sin Dato"], "Destino Norm"].unique())
+    if sin_dato:
+        st.info(
+            "⚠️ Estos destinos aún no tienen horas definidas en `data/tiempos_viaje_destino.csv` "
+            f"(se usó el valor por defecto de {DEFAULT_HORAS_VIAJE:.0f} h): "
+            + ", ".join(sin_dato)
+        )
+
+    # ── TABLERO ──
+    filas_html = ""
+    if f.empty:
+        filas_html = '<div class="board-empty">Sin despachos para los filtros seleccionados</div>'
+    else:
+        primera_id = f.index[0]
+        for idx, row in f.iterrows():
+            next_up = " next-up" if idx == primera_id and row["Estado"] in ("EN RUTA", "POR LLEGAR") else ""
+            sin_dato_tag = '<div class="sindato">⚠ SIN DATO</div>' if row["Sin Dato"] else ""
+            destino = html.escape(str(row["Destino Norm"]))
+            carga = html.escape(str(row.get("Nro carga", "")))
+            salida = row["Fecha_Hora_Despacho"].strftime("%d-%m %H:%M")
+            eta_str = row["ETA"].strftime("%d-%m %H:%M")
+
+            filas_html += f"""
+            <div class="board-row{next_up}">
+                <div class="board-destino">
+                    <div>{destino}</div>
+                    <div class="carga">{carga}</div>
+                    {sin_dato_tag}
+                </div>
+                <div>{salida}</div>
+                <div>{eta_str}</div>
+                <div>{row['Tiempo']}</div>
+                <div><span class="board-chip {row['Estado Clase']}">{row['Estado']}</span></div>
             </div>
-        """, unsafe_allow_html=True)
-    
-    st.write("")
-    st.write("")
-    st.write("")
-    
+            """
+
     st.markdown(
-        """
-        <style>
-        .blue-header table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .blue-header thead tr th {
-            background-color: #1C306A;
-            color: white;
-            padding: 10px;
-        }
-        .blue-header tbody tr td {
-            text-align: center;
-            padding: 10px;
-            font-weight: bold;  /* Negrita */
-        }
-        </style>
-        """, unsafe_allow_html=True
+        f"""
+        <div class="board-wrap">
+            <div class="board-topbar">
+                <div class="board-title">Próximos arribos · Transporte Primaria</div>
+                <div class="board-clock">{now.strftime('%d-%m-%Y %H:%M:%S')}</div>
+            </div>
+            <div class="board-header-row">
+                <div>Destino</div>
+                <div>Salida</div>
+                <div>ETA</div>
+                <div>Tiempo</div>
+                <div>Estado</div>
+            </div>
+            {filas_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    # Convertir el DataFrame a HTML con estilo personalizado
-    st.markdown(Programa_rutas.style.set_table_attributes('class="blue-header"').to_html(), unsafe_allow_html=True)
-    
+    st.download_button(
+        "⬇️ Descargar CSV filtrado",
+        data=f.to_csv(index=False).encode("utf-8"),
+        file_name="eta_primaria_filtrado.csv",
+        mime="text/csv"
+    )
+
+
 if __name__ == "__main__":
     main()
