@@ -84,9 +84,20 @@ def load_css_inline():
             letter-spacing:2px;
         }
 
+        .board-scroll{
+            max-height:65vh;
+            overflow-y:auto;
+        }
+        .board-scroll::-webkit-scrollbar{ width:10px; }
+        .board-scroll::-webkit-scrollbar-track{ background:var(--board-bg); }
+        .board-scroll::-webkit-scrollbar-thumb{
+            background:var(--board-dim);
+            border-radius:6px;
+        }
+
         .board-header-row, .board-row{
             display:grid;
-            grid-template-columns: 30% 16% 16% 20% 18%;
+            grid-template-columns: 22% 22% 14% 14% 14% 14%;
             align-items:center;
             padding:10px 26px;
         }
@@ -99,6 +110,10 @@ def load_css_inline():
             font-size:13px;
             color:var(--board-cyan);
             border-bottom:1px solid var(--board-divider);
+            position:sticky;
+            top:0;
+            background:var(--board-bg);
+            z-index:2;
         }
 
         .board-row{
@@ -128,6 +143,13 @@ def load_css_inline():
 
         @media (prefers-reduced-motion: reduce){
             .board-row.next-up::before{ animation:none; }
+        }
+
+        .board-row > div:not(.board-destino), .board-header-row > div{
+            overflow:hidden;
+            white-space:nowrap;
+            text-overflow:ellipsis;
+            padding-right:8px;
         }
 
         .board-destino{ display:flex; flex-direction:column; }
@@ -180,6 +202,15 @@ def normalizar_destino(destino):
     return " / ".join(partes)
 
 
+def extraer_transportista(proveedor):
+    """PROVEEDOR viene como 'RUT/NOMBRE EMPRESA' (ej: '82623500-4/IDEAL S.A').
+    Nos quedamos solo con el nombre, sin el RUT."""
+    proveedor = str(proveedor).strip()
+    if "/" in proveedor:
+        return proveedor.split("/", 1)[1].strip().upper()
+    return proveedor.upper()
+
+
 def leer_csv_github(repo, filename):
     try:
         file_content = repo.get_contents(f"{GITHUB_FOLDER}/{filename}")
@@ -193,7 +224,7 @@ def leer_csv_github(repo, filename):
 # =========================================================
 # CARGA Y CÁLCULO DE ETA
 # =========================================================
-@st.cache_data(ttl=55)
+@st.cache_data(ttl=570)
 def cargar_datos_eta():
     g = Github(GITHUB_TOKEN)
     repo = g.get_repo(REPO_NAME)
@@ -226,6 +257,11 @@ def cargar_datos_eta():
         .str.upper().str.replace("\xa0", " ", regex=False).str.strip()
     )
     df["Destino Norm"] = df["Destino Agencia concat"].apply(normalizar_destino)
+
+    if "PROVEEDOR" in df.columns:
+        df["Transportista"] = df["PROVEEDOR"].apply(extraer_transportista)
+    else:
+        df["Transportista"] = ""
 
     # ── Tabla de horas por destino ──
     if not tiempos.empty:
@@ -292,7 +328,7 @@ def main():
 
     st.caption("Fuente: GitHub /data/MAXCUBE_Primaria.csv + /data/tiempos_viaje_destino.csv")
 
-    st_autorefresh(interval=60000, key="eta_refresh")
+    st_autorefresh(interval=600000, key="eta_refresh")
 
     df = cargar_datos_eta()
 
@@ -353,6 +389,7 @@ def main():
             sin_dato_tag = '<div class="sindato">⚠ SIN DATO</div>' if row["Sin Dato"] else ""
             destino = html.escape(str(row["Destino Norm"]))
             carga = html.escape(str(row.get("Nro carga", "")))
+            transportista = html.escape(str(row.get("Transportista", "")))
             salida = row["Fecha_Hora_Despacho"].strftime("%d-%m %H:%M")
             eta_str = row["ETA"].strftime("%d-%m %H:%M")
 
@@ -363,6 +400,7 @@ def main():
                 f'<div class="carga">{carga}</div>'
                 f'{sin_dato_tag}'
                 f'</div>'
+                f'<div title="{transportista}">{transportista}</div>'
                 f'<div>{salida}</div>'
                 f'<div>{eta_str}</div>'
                 f'<div>{row["Tiempo"]}</div>'
@@ -377,14 +415,17 @@ def main():
                 <div class="board-title">Próximos arribos · Transporte Primaria</div>
                 <div class="board-clock">{now.strftime('%d-%m-%Y %H:%M:%S')}</div>
             </div>
-            <div class="board-header-row">
-                <div>Destino</div>
-                <div>Salida</div>
-                <div>ETA</div>
-                <div>Tiempo</div>
-                <div>Estado</div>
+            <div class="board-scroll">
+                <div class="board-header-row">
+                    <div>Destino</div>
+                    <div>Transportista</div>
+                    <div>Salida</div>
+                    <div>ETA</div>
+                    <div>Tiempo</div>
+                    <div>Estado</div>
+                </div>
+                {filas_html}
             </div>
-            {filas_html}
         </div>
         """,
         unsafe_allow_html=True,
