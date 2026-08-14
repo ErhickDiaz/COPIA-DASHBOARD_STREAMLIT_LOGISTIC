@@ -22,10 +22,6 @@ ZONA_HORARIA = "America/Santiago"
 # valor por defecto y la fila queda marcada con "⚠ SIN DATO".
 DEFAULT_HORAS_VIAJE = 8.0
 
-# Margen de tolerancia antes de marcar un despacho como "POSIBLE RETRASO"
-# una vez pasada la hora estimada de llegada.
-MARGEN_RETRASO_HORAS = 1.0
-
 # Umbral para pasar de "EN RUTA" a "POR LLEGAR" (última hora antes del ETA).
 UMBRAL_POR_LLEGAR_HORAS = 1.0
 
@@ -40,15 +36,16 @@ def load_css_inline():
         @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Share+Tech+Mono&display=swap');
 
         :root{
-            --board-bg:#0A0F1E;
-            --board-panel:#0F1730;
-            --board-row-alt:#121C3B;
-            --board-divider:rgba(255,255,255,0.08);
-            --board-amber:#FFB300;
+            --board-bg:#0A0D14;
+            --board-panel:#10141F;
+            --board-row-alt:#141926;
+            --board-divider:rgba(255,255,255,0.07);
+            --board-text:#E7ECF6;
+            --board-amber:#FFC24B;
             --board-cyan:#7DD8E8;
             --board-green:#4ADE80;
             --board-red:#FF4D5E;
-            --board-dim:#5B6683;
+            --board-dim:#7C8AA5;
         }
 
         .board-wrap{
@@ -80,7 +77,7 @@ def load_css_inline():
         .board-clock{
             font-family:'Share Tech Mono',monospace;
             font-size:22px;
-            color:var(--board-amber);
+            color:var(--board-cyan);
             letter-spacing:2px;
         }
 
@@ -119,7 +116,7 @@ def load_css_inline():
         .board-row{
             font-family:'Share Tech Mono',monospace;
             font-size:16px;
-            color:var(--board-amber);
+            color:var(--board-text);
             border-bottom:1px solid var(--board-divider);
             position:relative;
         }
@@ -295,10 +292,8 @@ def calcular_estado(eta, now):
         return "EN RUTA", "chip-enruta", f"Llega en {formatear_delta(delta)}"
     elif delta > 0:
         return "POR LLEGAR", "chip-porllegar", f"Llega en {formatear_delta(delta)}"
-    elif delta > -MARGEN_RETRASO_HORAS * 3600:
-        return "ARRIBO ESTIMADO", "chip-llegado", f"Hace {formatear_delta(-delta)}"
     else:
-        return "POSIBLE RETRASO", "chip-retraso", f"Atrasado {formatear_delta(-delta)}"
+        return "ARRIBADO", "chip-llegado", f"Llegó hace {formatear_delta(-delta)}"
 
 
 # =========================================================
@@ -361,14 +356,18 @@ def main():
     if estado_sel:
         f = f[f["Estado"].isin(estado_sel)]
 
-    f = f.sort_values("ETA", ascending=True)
+    # Pendientes primero (más próximo a llegar arriba); arribados al final
+    # (el arribo más reciente primero dentro de ese grupo).
+    pendientes = f[f["Estado"].isin(["EN RUTA", "POR LLEGAR"])].sort_values("ETA", ascending=True)
+    arribados = f[f["Estado"] == "ARRIBADO"].sort_values("ETA", ascending=False)
+    f = pd.concat([pendientes, arribados])
 
     # ── KPIs ──
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("🚛 Despachos", len(f))
     c2.metric("🛫 En ruta", int((f["Estado"] == "EN RUTA").sum()))
     c3.metric("🟡 Por llegar", int((f["Estado"] == "POR LLEGAR").sum()))
-    c4.metric("🔴 Posible retraso", int((f["Estado"] == "POSIBLE RETRASO").sum()))
+    c4.metric("✅ Arribados", int((f["Estado"] == "ARRIBADO").sum()))
 
     sin_dato = sorted(f.loc[f["Sin Dato"], "Destino Norm"].unique())
     if sin_dato:
