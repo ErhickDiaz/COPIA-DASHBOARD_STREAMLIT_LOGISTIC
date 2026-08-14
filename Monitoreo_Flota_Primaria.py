@@ -321,7 +321,7 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    st.caption("Fuente: GitHub /data/MAXCUBE_Primaria.csv + /data/tiempos_viaje_destino.csv")
+    st.caption("Vista en vivo: en ruta / por llegar (cualquier fecha de despacho) + arribos de hoy")
 
     st_autorefresh(interval=600000, key="eta_refresh")
 
@@ -331,43 +331,42 @@ def main():
         st.warning("⚠️ No hay datos disponibles todavía.")
         return
 
+    # ── ESTADO POR FILA (sobre todo el dataset: un despacho "en ruta" puede
+    #    ser de un día distinto al de hoy, así que el estado se calcula antes
+    #    de filtrar por fecha) ──
+    estados = df["ETA"].apply(lambda eta: calcular_estado(eta, now))
+    df["Estado"] = [e[0] for e in estados]
+    df["Estado Clase"] = [e[1] for e in estados]
+    df["Tiempo"] = [e[2] for e in estados]
+
+    # ── VISTA EN VIVO: todo lo que sigue en ruta/por llegar (sin importar
+    #    cuándo se despachó) + lo que arribó hoy ──
+    hoy = now.date()
+    en_vivo = df["Estado"].isin(["EN RUTA", "POR LLEGAR"]) | (
+        (df["Estado"] == "ARRIBADO") & (df["ETA"].dt.date == hoy)
+    )
+    f = df[en_vivo].copy()
+
     # ── FILTROS ──
     with st.sidebar:
         st.header("🔎 Filtros")
-        fechas_validas = sorted(df["Fecha_Hora_Despacho"].dt.date.dropna().unique())
-        fecha_sel = st.selectbox(
-            "Fecha de despacho", fechas_validas,
-            index=len(fechas_validas) - 1 if fechas_validas else 0
-        )
-        f = df[df["Fecha_Hora_Despacho"].dt.date == fecha_sel].copy()
-
         destinos = sorted(f["Destino Norm"].dropna().unique())
         destino_sel = st.multiselect("Destino", destinos)
         if destino_sel:
             f = f[f["Destino Norm"].isin(destino_sel)]
 
-    # ── ESTADO POR FILA ──
-    estados = f["ETA"].apply(lambda eta: calcular_estado(eta, now))
-    f["Estado"] = [e[0] for e in estados]
-    f["Estado Clase"] = [e[1] for e in estados]
-    f["Tiempo"] = [e[2] for e in estados]
+        estado_sel = st.multiselect("Estado", sorted(f["Estado"].unique()))
+        if estado_sel:
+            f = f[f["Estado"].isin(estado_sel)]
 
-    estado_sel = st.sidebar.multiselect("Estado", sorted(f["Estado"].unique()))
-    if estado_sel:
-        f = f[f["Estado"].isin(estado_sel)]
-
-    # Pendientes primero (más próximo a llegar arriba); arribados al final
-    # (el arribo más reciente primero dentro de ese grupo).
-    pendientes = f[f["Estado"].isin(["EN RUTA", "POR LLEGAR"])].sort_values("ETA", ascending=True)
-    arribados = f[f["Estado"] == "ARRIBADO"].sort_values("ETA", ascending=False)
-    f = pd.concat([pendientes, arribados])
+    f = f.sort_values("ETA", ascending=True)
 
     # ── KPIs ──
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("🚛 Despachos", len(f))
     c2.metric("🛫 En ruta", int((f["Estado"] == "EN RUTA").sum()))
     c3.metric("🟡 Por llegar", int((f["Estado"] == "POR LLEGAR").sum()))
-    c4.metric("✅ Arribados", int((f["Estado"] == "ARRIBADO").sum()))
+    c4.metric("✅ Arribados hoy", int((f["Estado"] == "ARRIBADO").sum()))
 
     sin_dato = sorted(f.loc[f["Sin Dato"], "Destino Norm"].unique())
     if sin_dato:
