@@ -280,7 +280,7 @@ def main():
     st.markdown(f"""
         <div style="display: flex; align-items: center;">
             <img src="data:image/jpeg;base64,{logo_base64}" style="width: 220px; margin-right: 15px;">
-            <h1>Logística: ETA Primaria</h1>
+            <h1>Logística: ETA Flota Primaria</h1>
         </div>
     """, unsafe_allow_html=True)
 
@@ -387,7 +387,7 @@ def main():
     st.download_button(
         "⬇️ Descargar CSV filtrado",
         data=f.to_csv(index=False).encode("utf-8"),
-        file_name="eta_primaria_filtrado.csv",
+        file_name="eta_flota_primaria_filtrado.csv",
         mime="text/csv"
     )
 
