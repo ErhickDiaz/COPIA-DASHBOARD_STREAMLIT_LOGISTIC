@@ -356,19 +356,19 @@ def main():
             salida = row["Fecha_Hora_Despacho"].strftime("%d-%m %H:%M")
             eta_str = row["ETA"].strftime("%d-%m %H:%M")
 
-            filas_html += f"""
-            <div class="board-row{next_up}">
-                <div class="board-destino">
-                    <div>{destino}</div>
-                    <div class="carga">{carga}</div>
-                    {sin_dato_tag}
-                </div>
-                <div>{salida}</div>
-                <div>{eta_str}</div>
-                <div>{row['Tiempo']}</div>
-                <div><span class="board-chip {row['Estado Clase']}">{row['Estado']}</span></div>
-            </div>
-            """
+            filas_html += (
+                f'<div class="board-row{next_up}">'
+                f'<div class="board-destino">'
+                f'<div>{destino}</div>'
+                f'<div class="carga">{carga}</div>'
+                f'{sin_dato_tag}'
+                f'</div>'
+                f'<div>{salida}</div>'
+                f'<div>{eta_str}</div>'
+                f'<div>{row["Tiempo"]}</div>'
+                f'<div><span class="board-chip {row["Estado Clase"]}">{row["Estado"]}</span></div>'
+                f'</div>'
+            )
 
     st.markdown(
         f"""
