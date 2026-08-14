@@ -213,6 +213,12 @@ def cargar_datos_eta():
         df["Fecha de despacho"].dt.strftime("%d/%m/%Y") + " " + df["Hora de despacho"],
         dayfirst=True, errors="coerce"
     )
+    # Se localiza a America/Santiago para que sea comparable (tz-aware) contra
+    # datetime.now(chile_tz) en calcular_estado(); si no se hace esto, pandas
+    # lanza TypeError al restar un datetime naive contra uno con tz.
+    df["Fecha_Hora_Despacho"] = df["Fecha_Hora_Despacho"].dt.tz_localize(
+        ZONA_HORARIA, ambiguous="NaT", nonexistent="NaT"
+    )
 
     # ── Destino normalizado (misma lógica que MaxCube_Primaria) ──
     df["Destino Agencia concat"] = (
