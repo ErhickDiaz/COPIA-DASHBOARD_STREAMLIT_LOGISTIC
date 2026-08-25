@@ -48,7 +48,7 @@ def main():
         "Monitoreo Pre Primaria": "📊",
         "Monitoreo Flota Primaria": "🚚",
         "Logistica Inversa": "♻️",
-        "MaxCube Primaria": "📦"
+        "MaxCube Primaria": "📦",
         "Costo por Servir Primaria": "💰"
     }
 
