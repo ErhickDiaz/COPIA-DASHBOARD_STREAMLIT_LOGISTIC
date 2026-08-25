@@ -4,6 +4,7 @@ from Monitoreo_Pre_Primaria import main as pre_primaria_main
 from Monitoreo_Flota_Primaria import main as flota_primaria_main
 from logistica_inversa import main as logistica_inversa_main
 from MaxCube_Primaria import main as maxcube_primaria_main
+from Costo_por_Servir_T1 import main as Costo_por_Servir_T1_main
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 import time
@@ -48,6 +49,7 @@ def main():
         "Monitoreo Flota Primaria": "🚚",
         "Logistica Inversa": "♻️",
         "MaxCube Primaria": "📦"
+        "Costo por Servir Primaria": "💰"
     }
 
     for option, icon in options.items():
@@ -82,6 +84,9 @@ def main():
         logistica_inversa_main()
     elif st.session_state.selection == "MaxCube Primaria":
         maxcube_primaria_main()
+    elif st.session_state.selection == "Costo por Servir Primaria":
+        Costo_por_Servir_T1_main()
+
 
 if __name__ == "__main__":
     main()
