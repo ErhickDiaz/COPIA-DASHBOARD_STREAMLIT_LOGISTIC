@@ -229,7 +229,7 @@ def cargar_costos_flete(repo):
 
     # Se descartan filas sin costo positivo. Si hay duplicados idénticos,
     # se conserva la ultima aparicion para evitar multiplicar el flete.
-    costos = costos[costos["COSTOS"] > 0].copy()
+    costos = costos[costos["COSTO"] > 0].copy()
     return costos
 
 
