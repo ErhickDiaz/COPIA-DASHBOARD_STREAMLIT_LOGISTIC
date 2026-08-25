@@ -93,7 +93,10 @@ def limpiar_identificador(serie):
 
 def convertir_numero(serie):
     if pd.api.types.is_numeric_dtype(serie):
-        return pd.to_numeric(serie, errors="coerce").fillna(0.0)
+        return pd.to_numeric(
+            serie,
+            errors="coerce"
+        ).fillna(0.0)
 
     limpio = (
         serie.fillna("")
@@ -101,22 +104,55 @@ def convertir_numero(serie):
         .str.replace('="', "", regex=False)
         .str.replace('"', "", regex=False)
         .str.replace("$", "", regex=False)
+        .str.replace("CLP", "", regex=False)
         .str.replace(" ", "", regex=False)
+        .str.strip()
     )
 
-    # Formato CL habitual: 1.234.567 o 1.234.567,89
-    tiene_coma = limpio.str.contains(",", regex=False)
-    limpio.loc[tiene_coma] = (
-        limpio.loc[tiene_coma]
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-    )
+    def convertir_valor(valor):
+        if valor is None:
+            return 0.0
 
-    # Si no hay coma y existen varios puntos, son separadores de miles.
-    varios_puntos = limpio.str.count(r"\.") > 1
-    limpio.loc[varios_puntos] = limpio.loc[varios_puntos].str.replace(".", "", regex=False)
+        valor = str(valor).strip()
 
-    return pd.to_numeric(limpio, errors="coerce").fillna(0.0)
+        if valor == "" or valor.lower() in {
+            "nan",
+            "none",
+            "null",
+            "-"
+        }:
+            return 0.0
+
+        try:
+            # Formato chileno con coma decimal:
+            # 1.234.567,89
+            if "," in valor:
+                valor = (
+                    valor
+                    .replace(".", "")
+                    .replace(",", ".")
+                )
+                return float(valor)
+
+            # Un punto seguido de exactamente tres cifras:
+            # 844.268 -> 844268
+            if re.fullmatch(r"-?\d{1,3}(\.\d{3})+", valor):
+                return float(valor.replace(".", ""))
+
+            # Varios puntos como separadores de miles:
+            # 1.234.567
+            if valor.count(".") > 1:
+                return float(valor.replace(".", ""))
+
+            # Número normal:
+            # 844268
+            # 844268.50
+            return float(valor)
+
+        except (ValueError, TypeError):
+            return 0.0
+
+    return limpio.apply(convertir_valor)
 
 
 def formato_entero(valor):
