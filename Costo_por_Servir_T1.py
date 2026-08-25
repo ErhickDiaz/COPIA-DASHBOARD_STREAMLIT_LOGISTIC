@@ -79,6 +79,24 @@ def normalizar_clave_texto(serie):
             .str.replace(r"\s*/\s*", "/", regex=True))
 
 
+def normalizar_destino_clave(serie):
+    """Normaliza destinos para cruzar MAXCUBE con fletes_actuales.csv.
+
+    Convierte rutas expresadas con '/', guion o guion bajo a una clave comun.
+    Ejemplos: CONCEPCION / TEMUCO y CONCEPCION - TEMUCO.
+    """
+    normalizado = normalizar_clave_texto(serie)
+    return (
+        normalizado
+        .str.replace(r"\_", " ", regex=True)
+        .str.replace("_", " ", regex=False)
+        .str.replace(r"\s*/\s*", " - ", regex=True)
+        .str.replace(r"\s+-\s+", " - ", regex=True)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+
+
 def convertir_numero(serie):
     if pd.api.types.is_numeric_dtype(serie):
         return pd.to_numeric(serie, errors="coerce").fillna(0.0)
@@ -147,7 +165,7 @@ def cargar_costos_flete(repo):
 
 # =========================================================
 # FUENTE 2: FLETE ACTUAL
-# Espera Proveedor + Destino + Costo
+# Cruce exacto: PROVEEDOR + DESTINO -> COSTOS
 # =========================================================
 def cargar_flete_actual(repo):
     bruto = leer_csv_github(repo, ARCHIVO_FLETE_ACTUAL)
@@ -163,7 +181,7 @@ def cargar_flete_actual(repo):
         return pd.DataFrame()
     out = pd.DataFrame(index=bruto.index)
     out["Proveedor clave"] = normalizar_clave_texto(bruto[c_prov])
-    out["Destino clave"] = normalizar_clave_texto(bruto[c_dest])
+    out["Destino clave"] = normalizar_destino_clave(bruto[c_dest])
     out["COSTO"] = convertir_numero(bruto[c_costo])
     out = out[(out["Proveedor clave"] != "") & (out["Destino clave"] != "") & (out["COSTO"] > 0)]
     return out.drop_duplicates(["Proveedor clave", "Destino clave"], keep="last")
@@ -238,7 +256,7 @@ def cargar_costo_por_servir():
     df["Hora de despacho"] = bruto[c_hora].fillna("").astype(str).str.strip() if c_hora else ""
     df["Destino"] = bruto[c_dest].fillna("SIN DESTINO").astype(str).str.upper().str.strip()
     df["Proveedor"] = bruto[c_prov].fillna("SIN PROVEEDOR").astype(str).str.upper().str.strip()
-    df["Destino clave"] = normalizar_clave_texto(bruto[c_dest])
+    df["Destino clave"] = normalizar_destino_clave(bruto[c_dest])
     df["Proveedor clave"] = normalizar_clave_texto(bruto[c_prov])
     df["Bultos despachados"] = convertir_numero(bruto[c_bd])
     df["Valor despachado"] = convertir_numero(bruto[c_vd])
