@@ -16,9 +16,9 @@ GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
 GITHUB_FOLDER = "data"
 ARCHIVO_COSTO_SERVIR = "Costo_por_Servir_T1.csv"
-ARCHIVO_COSTO_FLETE = "viajes_primaria.csv"
+ARCHIVO_COSTO_FLETE = "viajes primaria.csv"
+ARCHIVO_FLETE_ACTUAL = "flete_actual.csv"
 ZONA_HORARIA = "America/Santiago"
-
 
 # =========================================================
 # GITHUB
@@ -31,653 +31,335 @@ def leer_csv_github(repo, filename):
     try:
         archivo = repo.get_contents(f"{GITHUB_FOLDER}/{filename}")
         contenido = archivo.decoded_content.decode("utf-8-sig")
-
-        lineas = contenido.splitlines()
-        primera_linea = lineas[0] if lineas else ""
-        separador = ";" if primera_linea.count(";") > primera_linea.count(",") else ","
-
-        return pd.read_csv(
-            StringIO(contenido),
-            sep=separador,
-            engine="python",
-            dtype=str,
-        )
+        primera = contenido.splitlines()[0] if contenido.splitlines() else ""
+        sep = ";" if primera.count(";") > primera.count(",") else ","
+        return pd.read_csv(StringIO(contenido), sep=sep, engine="python", dtype=str)
     except Exception as e:
         st.error(f"No se pudo cargar {filename} desde GitHub: {e}")
         return pd.DataFrame()
-
 
 # =========================================================
 # NORMALIZACION
 # =========================================================
 def normalizar_texto(valor):
-    texto = str(valor).strip().lower()
-    texto = unicodedata.normalize("NFD", texto)
+    texto = unicodedata.normalize("NFD", str(valor).strip().lower())
     texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
     return re.sub(r"[^a-z0-9]+", " ", texto).strip()
 
 
 def buscar_columna(df, opciones, obligatoria=True):
     mapa = {normalizar_texto(c): c for c in df.columns}
-
-    for opcion in opciones:
-        clave = normalizar_texto(opcion)
-        if clave in mapa:
-            return mapa[clave]
-
+    for op in opciones:
+        if normalizar_texto(op) in mapa:
+            return mapa[normalizar_texto(op)]
     for clave, original in mapa.items():
-        for opcion in opciones:
-            if normalizar_texto(opcion) in clave:
-                return original
-
+        if any(normalizar_texto(op) in clave for op in opciones):
+            return original
     if obligatoria:
-        raise KeyError(
-            f"No se encontro una columna equivalente a {opciones}. "
-            f"Columnas disponibles: {list(df.columns)}"
-        )
+        raise KeyError(f"No se encontro columna equivalente a {opciones}. Disponibles: {list(df.columns)}")
     return None
 
 
 def limpiar_identificador(serie):
-    return (
-        serie.fillna("")
-        .astype(str)
-        .str.replace('="', "", regex=False)
-        .str.replace('"', "", regex=False)
-        .str.replace(r"\.0$", "", regex=True)
-        .str.replace("\u00a0", " ", regex=False)
-        .str.strip()
-        .str.upper()
-    )
+    return (serie.fillna("").astype(str)
+            .str.replace('="', "", regex=False).str.replace('"', "", regex=False)
+            .str.replace(r"\.0$", "", regex=True).str.replace(" ", " ", regex=False)
+            .str.strip().str.upper())
+
+
+def normalizar_carga(serie):
+    return (limpiar_identificador(serie)
+            .str.replace(r"\s*/\s*", " / ", regex=True)
+            .str.replace(r"\s+", " ", regex=True).str.strip())
+
+
+def normalizar_clave_texto(serie):
+    return (serie.fillna("").astype(str).str.replace(" ", " ", regex=False)
+            .str.upper().str.strip().str.replace(r"\s+", " ", regex=True)
+            .str.replace(r"\s*/\s*", "/", regex=True))
 
 
 def convertir_numero(serie):
     if pd.api.types.is_numeric_dtype(serie):
-        return pd.to_numeric(
-            serie,
-            errors="coerce"
-        ).fillna(0.0)
-
-    limpio = (
-        serie.fillna("")
-        .astype(str)
-        .str.replace('="', "", regex=False)
-        .str.replace('"', "", regex=False)
-        .str.replace("$", "", regex=False)
-        .str.replace("CLP", "", regex=False)
-        .str.replace(" ", "", regex=False)
-        .str.strip()
-    )
-
-    def convertir_valor(valor):
-        if valor is None:
+        return pd.to_numeric(serie, errors="coerce").fillna(0.0)
+    limpio = (serie.fillna("").astype(str).str.replace('="', "", regex=False)
+              .str.replace('"', "", regex=False).str.replace("$", "", regex=False)
+              .str.replace("CLP", "", regex=False).str.replace(" ", "", regex=False).str.strip())
+    def uno(v):
+        if not v or v.lower() in {"nan", "none", "null", "-", "#¡ref!"}:
             return 0.0
-
-        valor = str(valor).strip()
-
-        if valor == "" or valor.lower() in {
-            "nan",
-            "none",
-            "null",
-            "-"
-        }:
-            return 0.0
-
         try:
-            # Formato chileno con coma decimal:
-            # 1.234.567,89
-            if "," in valor:
-                valor = (
-                    valor
-                    .replace(".", "")
-                    .replace(",", ".")
-                )
-                return float(valor)
-
-            # Un punto seguido de exactamente tres cifras:
-            # 844.268 -> 844268
-            if re.fullmatch(r"-?\d{1,3}(\.\d{3})+", valor):
-                return float(valor.replace(".", ""))
-
-            # Varios puntos como separadores de miles:
-            # 1.234.567
-            if valor.count(".") > 1:
-                return float(valor.replace(".", ""))
-
-            # Número normal:
-            # 844268
-            # 844268.50
-            return float(valor)
-
+            if "," in v:
+                return float(v.replace(".", "").replace(",", "."))
+            if re.fullmatch(r"-?\d{1,3}(\.\d{3})+", v):
+                return float(v.replace(".", ""))
+            if v.count(".") > 1:
+                return float(v.replace(".", ""))
+            return float(v)
         except (ValueError, TypeError):
             return 0.0
-
-    return limpio.apply(convertir_valor)
-
-
-def formato_entero(valor):
-    return f"{float(valor):,.0f}".replace(",", ".")
+    return limpio.apply(uno)
 
 
-def formato_clp(valor):
-    return f"$ {formato_entero(valor)}"
+def formato_entero(v):
+    return f"{float(v):,.0f}".replace(",", ".")
+
+
+def formato_clp(v):
+    return f"$ {formato_entero(v)}"
 
 
 def calcular_semana_bimbo(fecha):
     if pd.isna(fecha):
         return None
-
     anio = fecha.year
-    primer_dia = pd.Timestamp(f"{anio}-01-01")
-    offset = (3 - primer_dia.weekday()) % 7
-    primer_jueves = primer_dia + pd.Timedelta(days=offset)
-
+    inicio = pd.Timestamp(f"{anio}-01-01")
+    primer_jueves = inicio + pd.Timedelta(days=(3 - inicio.weekday()) % 7)
     if fecha < primer_jueves:
         anio -= 1
-        primer_dia = pd.Timestamp(f"{anio}-01-01")
-        offset = (3 - primer_dia.weekday()) % 7
-        primer_jueves = primer_dia + pd.Timedelta(days=offset)
-
-    semana = ((fecha - primer_jueves).days // 7) + 1
-    return f"{anio}-S{str(semana).zfill(2)}"
-
+        inicio = pd.Timestamp(f"{anio}-01-01")
+        primer_jueves = inicio + pd.Timedelta(days=(3 - inicio.weekday()) % 7)
+    return f"{anio}-S{str(((fecha-primer_jueves).days // 7)+1).zfill(2)}"
 
 # =========================================================
-# COSTO FLETE T1
-# Prioridad: Nro de Carga. Respaldo: Bitacora.
+# FUENTE 1: VIAJES PRIMARIA
 # =========================================================
 def cargar_costos_flete(repo):
     bruto = leer_csv_github(repo, ARCHIVO_COSTO_FLETE)
     if bruto.empty:
         return bruto
-
     bruto.columns = [str(c).strip() for c in bruto.columns]
-
     try:
-        c_carga = buscar_columna(
-            bruto,
-            ["Nro de Carga", "Nro carga", "Nro Carga", "Numero de Carga", "Numero carga"],
-            obligatoria=False,
-        )
-        c_bitacora = buscar_columna(
-            bruto,
-            ["Bitacora", "Bitácora", "Numero Bitacora", "Nro Bitacora"],
-            obligatoria=False,
-        )
-        c_costo = buscar_columna(
-            bruto,
-            ["COSTO", "COSTOS", "Costo Flete", "Valor Flete", "Flete"],
-        )
+        c_carga = buscar_columna(bruto, ["Nro Carga", "Nro de Carga", "Numero carga"], False)
+        c_bit = buscar_columna(bruto, ["Bitacora", "Bitácora", "Nro Bitacora"], False)
+        c_costo = buscar_columna(bruto, ["COSTOS", "COSTO", "Costo Flete", "Valor Flete", "Flete"])
     except KeyError as e:
         st.error(f"Error en {ARCHIVO_COSTO_FLETE}: {e}")
         return pd.DataFrame()
-
-    if not c_carga and not c_bitacora:
-        st.error(
-            f"{ARCHIVO_COSTO_FLETE} no contiene Nro de Carga ni Bitacora."
-        )
+    if not c_carga and not c_bit:
+        st.error(f"{ARCHIVO_COSTO_FLETE} no contiene Nro Carga ni Bitacora")
         return pd.DataFrame()
-
-    costos = pd.DataFrame(index=bruto.index)
-    costos["Nro carga"] = (
-        limpiar_identificador(bruto[c_carga]) if c_carga else ""
-    )
-    costos["Bitacora"] = (
-        limpiar_identificador(bruto[c_bitacora]) if c_bitacora else ""
-    )
-    costos["COSTO"] = convertir_numero(bruto[c_costo])
-
-    # Se descartan filas sin costo positivo. Si hay duplicados idénticos,
-    # se conserva la ultima aparicion para evitar multiplicar el flete.
-    costos = costos[costos["COSTO"] > 0].copy()
-    return costos
-
-
-def crear_mapa_unico(costos, clave):
-    if costos.empty or clave not in costos.columns:
-        return {}
-
-    validos = costos[costos[clave].astype(str).str.strip().ne("")].copy()
-    if validos.empty:
-        return {}
-
-    return (
-        validos.drop_duplicates(subset=[clave], keep="last")
-        .set_index(clave)["COSTO"]
-        .to_dict()
-    )
-
-
-def aplicar_costos_flete(df, costos):
-    salida = df.copy()
-
-    mapa_carga = crear_mapa_unico(costos, "Nro carga")
-    mapa_bitacora = crear_mapa_unico(costos, "Bitacora")
-
-    costo_por_carga = salida["Nro carga"].map(mapa_carga)
-    costo_por_bitacora = salida["Bitacora clave"].map(mapa_bitacora)
-
-    salida["Valor Flete"] = costo_por_carga
-    salida["Origen Flete"] = "Sin coincidencia"
-
-    encontro_carga = costo_por_carga.notna()
-    salida.loc[encontro_carga, "Origen Flete"] = "Nro de Carga"
-
-    # Respaldo solo donde no se encontro la carga.
-    usar_bitacora = salida["Valor Flete"].isna() & costo_por_bitacora.notna()
-    salida.loc[usar_bitacora, "Valor Flete"] = costo_por_bitacora.loc[usar_bitacora]
-    salida.loc[usar_bitacora, "Origen Flete"] = "Bitacora"
-
-    salida["Valor Flete"] = pd.to_numeric(
-        salida["Valor Flete"], errors="coerce"
-    ).fillna(0.0)
-
-    return salida
-
+    out = pd.DataFrame(index=bruto.index)
+    out["Nro carga"] = normalizar_carga(bruto[c_carga]) if c_carga else ""
+    out["Bitacora"] = limpiar_identificador(bruto[c_bit]) if c_bit else ""
+    out["COSTO"] = convertir_numero(bruto[c_costo])
+    return out[out["COSTO"] > 0].copy()
 
 # =========================================================
-# CARGA Y ENRIQUECIMIENTO DEL CONSOLIDADO
+# FUENTE 2: FLETE ACTUAL
+# Espera Proveedor + Destino + Costo
+# =========================================================
+def cargar_flete_actual(repo):
+    bruto = leer_csv_github(repo, ARCHIVO_FLETE_ACTUAL)
+    if bruto.empty:
+        return bruto
+    bruto.columns = [str(c).strip() for c in bruto.columns]
+    try:
+        c_prov = buscar_columna(bruto, ["PROVEEDOR", "Proveedor", "Carrier", "Transportista"])
+        c_dest = buscar_columna(bruto, ["DESTINO", "Destino", "1ra Parada", "Primera Parada"])
+        c_costo = buscar_columna(bruto, ["COSTOS", "COSTO", "Costo Flete", "Valor Flete", "Flete"])
+    except KeyError as e:
+        st.error(f"Error en {ARCHIVO_FLETE_ACTUAL}: {e}")
+        return pd.DataFrame()
+    out = pd.DataFrame(index=bruto.index)
+    out["Proveedor clave"] = normalizar_clave_texto(bruto[c_prov])
+    out["Destino clave"] = normalizar_clave_texto(bruto[c_dest])
+    out["COSTO"] = convertir_numero(bruto[c_costo])
+    out = out[(out["Proveedor clave"] != "") & (out["Destino clave"] != "") & (out["COSTO"] > 0)]
+    return out.drop_duplicates(["Proveedor clave", "Destino clave"], keep="last")
+
+
+def crear_mapa_unico(df, clave):
+    if df.empty or clave not in df.columns:
+        return {}
+    x = df[df[clave].astype(str).str.strip().ne("")]
+    return x.drop_duplicates(clave, keep="last").set_index(clave)["COSTO"].to_dict()
+
+
+def crear_mapa_actual(df):
+    if df.empty:
+        return {}
+    return df.set_index(["Proveedor clave", "Destino clave"])["COSTO"].to_dict()
+
+
+def aplicar_costos_flete(df, viajes, actual):
+    out = df.copy()
+    mapa_carga = crear_mapa_unico(viajes, "Nro carga")
+    mapa_bit = crear_mapa_unico(viajes, "Bitacora")
+    mapa_actual = crear_mapa_actual(actual)
+
+    por_carga = out["Nro carga"].map(mapa_carga)
+    por_bit = out["Bitacora clave"].map(mapa_bit)
+    claves = pd.Series(list(zip(out["Proveedor clave"], out["Destino clave"])), index=out.index)
+    por_actual = claves.map(mapa_actual)
+
+    out["Valor Flete"] = por_carga
+    out["Origen Flete"] = "Sin coincidencia"
+    m1 = por_carga.notna() & por_carga.gt(0)
+    out.loc[m1, "Origen Flete"] = "viajes primaria - Nro Carga"
+
+    m2 = (out["Valor Flete"].isna() | out["Valor Flete"].le(0)) & por_bit.notna() & por_bit.gt(0)
+    out.loc[m2, "Valor Flete"] = por_bit.loc[m2]
+    out.loc[m2, "Origen Flete"] = "viajes primaria - Bitacora"
+
+    m3 = (out["Valor Flete"].isna() | out["Valor Flete"].le(0)) & por_actual.notna() & por_actual.gt(0)
+    out.loc[m3, "Valor Flete"] = por_actual.loc[m3]
+    out.loc[m3, "Origen Flete"] = "flete_actual - Proveedor/Destino"
+
+    out["Valor Flete"] = pd.to_numeric(out["Valor Flete"], errors="coerce").fillna(0.0)
+    return out
+
+# =========================================================
+# CONSOLIDADO
 # =========================================================
 def cargar_costo_por_servir():
     repo = obtener_repo()
     bruto = leer_csv_github(repo, ARCHIVO_COSTO_SERVIR)
-
     if bruto.empty:
         return bruto
-
     bruto.columns = [str(c).strip() for c in bruto.columns]
-
     try:
         c_fecha = buscar_columna(bruto, ["Fecha", "Fecha de despacho"])
         c_hora = buscar_columna(bruto, ["Hora", "Hora de despacho"], False)
-        c_destino = buscar_columna(bruto, ["Destino", "Destino Agencia concat"])
-        c_proveedor = buscar_columna(bruto, ["Proveedor", "PROVEEDOR"])
-        c_bdesp = buscar_columna(bruto, ["Bultos despachados"])
-        c_vdesp = buscar_columna(
-            bruto, ["Costo de los bultos despachados", "Valor despachado"]
-        )
-        c_bemp = buscar_columna(bruto, ["Bultos empacados"])
-        c_vemp = buscar_columna(
-            bruto, ["Costo de los bultos empacados", "Valor empacado"]
-        )
-        c_bitacora = buscar_columna(bruto, ["Bitacora", "Bitácora"])
-        c_carga = buscar_columna(
-            bruto, ["Nro carga", "Nro de Carga", "Numero carga"]
-        )
+        c_dest = buscar_columna(bruto, ["Destino", "Destino Agencia concat"])
+        c_prov = buscar_columna(bruto, ["Proveedor", "PROVEEDOR"])
+        c_bd = buscar_columna(bruto, ["Bultos despachados"])
+        c_vd = buscar_columna(bruto, ["Costo de los bultos despachados", "Valor despachado"])
+        c_be = buscar_columna(bruto, ["Bultos empacados"])
+        c_ve = buscar_columna(bruto, ["Costo de los bultos empacados", "Valor empacado"])
+        c_bit = buscar_columna(bruto, ["Bitacora", "Bitácora"])
+        c_carga = buscar_columna(bruto, ["Nro carga", "Nro de Carga", "Numero carga"])
     except KeyError as e:
-        st.error(str(e))
-        return pd.DataFrame()
+        st.error(str(e)); return pd.DataFrame()
 
     df = pd.DataFrame(index=bruto.index)
-    df["Fecha despacho dt"] = pd.to_datetime(
-        bruto[c_fecha], dayfirst=True, errors="coerce"
-    )
+    df["Fecha despacho dt"] = pd.to_datetime(bruto[c_fecha], dayfirst=True, errors="coerce")
     df["Fecha de despacho"] = df["Fecha despacho dt"].dt.strftime("%d/%m/%Y")
-    df["Hora de despacho"] = (
-        bruto[c_hora].fillna("").astype(str).str.strip() if c_hora else ""
-    )
-    df["Destino"] = (
-        bruto[c_destino].fillna("SIN DESTINO").astype(str).str.upper().str.strip()
-    )
-    df["Proveedor"] = (
-        bruto[c_proveedor].fillna("SIN PROVEEDOR").astype(str).str.upper().str.strip()
-    )
-    df["Bultos despachados"] = convertir_numero(bruto[c_bdesp])
-    df["Valor despachado"] = convertir_numero(bruto[c_vdesp])
-    df["Bultos empacados"] = convertir_numero(bruto[c_bemp])
-    df["Valor empacado"] = convertir_numero(bruto[c_vemp])
-    df["Bitácora"] = limpiar_identificador(bruto[c_bitacora])
+    df["Hora de despacho"] = bruto[c_hora].fillna("").astype(str).str.strip() if c_hora else ""
+    df["Destino"] = bruto[c_dest].fillna("SIN DESTINO").astype(str).str.upper().str.strip()
+    df["Proveedor"] = bruto[c_prov].fillna("SIN PROVEEDOR").astype(str).str.upper().str.strip()
+    df["Destino clave"] = normalizar_clave_texto(bruto[c_dest])
+    df["Proveedor clave"] = normalizar_clave_texto(bruto[c_prov])
+    df["Bultos despachados"] = convertir_numero(bruto[c_bd])
+    df["Valor despachado"] = convertir_numero(bruto[c_vd])
+    df["Bultos empacados"] = convertir_numero(bruto[c_be])
+    df["Valor empacado"] = convertir_numero(bruto[c_ve])
+    df["Bitácora"] = limpiar_identificador(bruto[c_bit])
     df["Bitacora clave"] = df["Bitácora"]
-    df["Nro carga"] = limpiar_identificador(bruto[c_carga])
+    df["Nro carga"] = normalizar_carga(bruto[c_carga])
 
-    costos = cargar_costos_flete(repo)
-    df = aplicar_costos_flete(df, costos)
+    viajes = cargar_costos_flete(repo)
+    actual = cargar_flete_actual(repo)
+    df = aplicar_costos_flete(df, viajes, actual)
 
     df["Fecha"] = df["Fecha despacho dt"].dt.date
     df["Año-Semana"] = df["Fecha despacho dt"].apply(calcular_semana_bimbo)
     df["Mes"] = df["Fecha despacho dt"].dt.strftime("%Y-%m")
-    df["Diferencia bultos"] = (
-        df["Bultos despachados"] - df["Bultos empacados"]
-    )
-
+    df["Diferencia bultos"] = df["Bultos despachados"] - df["Bultos empacados"]
     df["CxQ"] = 0.0
-    mask_valor = df["Valor empacado"] > 0
-    df.loc[mask_valor, "CxQ"] = (
-        df.loc[mask_valor, "Valor Flete"]
-        / df.loc[mask_valor, "Valor empacado"]
-    )
-
-    df["Estado cruce"] = df["Valor Flete"].gt(0).map(
-        {True: "Flete cruzado", False: "Sin costo encontrado"}
-    )
-
-    return df.sort_values(
-        ["Fecha despacho dt", "Destino", "Bitácora", "Nro carga"],
-        ascending=[True, True, True, True],
-    )
-
+    m = df["Valor empacado"] > 0
+    df.loc[m, "CxQ"] = df.loc[m, "Valor Flete"] / df.loc[m, "Valor empacado"]
+    df["Estado cruce"] = df["Valor Flete"].gt(0).map({True:"Flete cruzado", False:"Sin costo encontrado"})
+    return df.sort_values(["Fecha despacho dt", "Destino", "Bitácora", "Nro carga"])
 
 # =========================================================
 # RESUMENES
 # =========================================================
 def resumen_destino(df):
-    if df.empty:
-        return pd.DataFrame()
-
-    r = (
-        df.groupby("Destino", as_index=False)
-        .agg(
-            Viajes=("Nro carga", "count"),
-            Flete=("Valor Flete", "sum"),
-            Valor_empacado=("Valor empacado", "sum"),
-            Bultos=("Bultos empacados", "sum"),
-            Cargas_con_flete=("Valor Flete", lambda s: int((s > 0).sum())),
-        )
-    )
+    if df.empty: return pd.DataFrame()
+    r = df.groupby("Destino", as_index=False).agg(Viajes=("Nro carga","count"), Flete=("Valor Flete","sum"), Valor_empacado=("Valor empacado","sum"), Bultos=("Bultos empacados","sum"), Con_flete=("Valor Flete",lambda s:int((s>0).sum())))
     r["CxQ"] = 0.0
-    mask = r["Valor_empacado"] > 0
-    r.loc[mask, "CxQ"] = r.loc[mask, "Flete"] / r.loc[mask, "Valor_empacado"]
-    r["Cobertura flete %"] = (
-        r["Cargas_con_flete"] / r["Viajes"] * 100
-    ).round(1)
+    m = r["Valor_empacado"] > 0
+    r.loc[m,"CxQ"] = r.loc[m,"Flete"] / r.loc[m,"Valor_empacado"]
+    r["Cobertura flete %"] = (r["Con_flete"] / r["Viajes"] * 100).round(1)
     return r.sort_values("CxQ", ascending=False)
 
 
 def resumen_proveedor(df):
-    if df.empty:
-        return pd.DataFrame()
-
-    r = (
-        df.groupby("Proveedor", as_index=False)
-        .agg(
-            Viajes=("Nro carga", "count"),
-            Flete=("Valor Flete", "sum"),
-            Valor_empacado=("Valor empacado", "sum"),
-        )
-    )
+    if df.empty: return pd.DataFrame()
+    r = df.groupby("Proveedor", as_index=False).agg(Viajes=("Nro carga","count"), Flete=("Valor Flete","sum"), Valor_empacado=("Valor empacado","sum"))
     r["CxQ"] = 0.0
-    mask = r["Valor_empacado"] > 0
-    r.loc[mask, "CxQ"] = r.loc[mask, "Flete"] / r.loc[mask, "Valor_empacado"]
+    m = r["Valor_empacado"] > 0
+    r.loc[m,"CxQ"] = r.loc[m,"Flete"] / r.loc[m,"Valor_empacado"]
     return r.sort_values("Flete", ascending=False)
-
 
 # =========================================================
 # APP
 # =========================================================
 def main():
-    chile_tz = pytz.timezone(ZONA_HORARIA)
-    st.session_state["ultima_actualizacion_real"] = datetime.now(chile_tz)
-
+    st.session_state["ultima_actualizacion_real"] = datetime.now(pytz.timezone(ZONA_HORARIA))
     st.title("💰 Costo por Servir T1")
-    st.caption(
-        "Base: /data/Costo_por_Servir_T1.csv · "
-        "Flete: /data/viajes_primaria.csv · "
-        "Prioridad Nro de Carga, respaldo Bitacora"
-    )
-
+    st.caption(f"Base: /data/{ARCHIVO_COSTO_SERVIR} · Flete histórico: /data/{ARCHIVO_COSTO_FLETE} · Respaldo: /data/{ARCHIVO_FLETE_ACTUAL} · Prioridad: Nro Carga, Bitácora y tarifa actual")
     if st.sidebar.button("🔄 Actualizar datos", key="actualizar_costo_servir"):
         st.rerun()
-
     df = cargar_costo_por_servir()
-
     if df.empty:
-        st.warning("No existen registros validos para Costo por Servir T1.")
-        return
+        st.warning("No existen registros validos para Costo por Servir T1."); return
 
     with st.sidebar:
         st.header("🔎 Filtros Costo por Servir")
-        modo = st.radio(
-            "Periodo", ["Día", "Semana", "Mes"], index=0, key="cps_periodo"
-        )
+        modo = st.radio("Periodo", ["Día","Semana","Mes"], key="cps_periodo")
         f = df.copy()
-
         if modo == "Día":
-            fechas = sorted(f["Fecha"].dropna().unique())
-            if fechas:
-                fecha_sel = st.selectbox(
-                    "Fecha", fechas, index=len(fechas) - 1, key="cps_fecha"
-                )
-                f = f[f["Fecha"] == fecha_sel]
+            vals = sorted(f["Fecha"].dropna().unique())
+            if vals: f = f[f["Fecha"] == st.selectbox("Fecha", vals, index=len(vals)-1, key="cps_fecha")]
         elif modo == "Semana":
-            semanas = sorted(f["Año-Semana"].dropna().unique())
-            if semanas:
-                semana_sel = st.selectbox(
-                    "Semana", semanas, index=len(semanas) - 1, key="cps_semana"
-                )
-                f = f[f["Año-Semana"] == semana_sel]
+            vals = sorted(f["Año-Semana"].dropna().unique())
+            if vals: f = f[f["Año-Semana"] == st.selectbox("Semana", vals, index=len(vals)-1, key="cps_semana")]
         else:
-            meses = sorted(f["Mes"].dropna().unique())
-            if meses:
-                mes_sel = st.selectbox(
-                    "Mes", meses, index=len(meses) - 1, key="cps_mes"
-                )
-                f = f[f["Mes"] == mes_sel]
+            vals = sorted(f["Mes"].dropna().unique())
+            if vals: f = f[f["Mes"] == st.selectbox("Mes", vals, index=len(vals)-1, key="cps_mes")]
+        ds = st.multiselect("Destino", sorted(f["Destino"].unique()), key="cps_destino")
+        ps = st.multiselect("Proveedor", sorted(f["Proveedor"].unique()), key="cps_proveedor")
+        es = st.selectbox("Cruce de flete", ["Todos","Flete cruzado","Sin costo encontrado"], key="cps_estado")
+        q = st.text_input("Buscar carga o bitácora", key="cps_busqueda").strip().lower()
+        if ds: f = f[f["Destino"].isin(ds)]
+        if ps: f = f[f["Proveedor"].isin(ps)]
+        if es != "Todos": f = f[f["Estado cruce"] == es]
+        if q: f = f[f["Nro carga"].str.lower().str.contains(q,na=False,regex=False) | f["Bitácora"].str.lower().str.contains(q,na=False,regex=False)]
 
-        destinos = sorted(f["Destino"].dropna().astype(str).unique())
-        destino_sel = st.multiselect("Destino", destinos, key="cps_destino")
+    total_viajes=len(f); total_valor=f["Valor empacado"].sum(); total_flete=f["Valor Flete"].sum(); total_bultos=f["Bultos empacados"].sum()
+    cxq=total_flete/total_valor if total_valor>0 else 0; cobertura=(f["Valor Flete"]>0).mean() if total_viajes else 0
+    c1,c2,c3,c4,c5,c6=st.columns(6)
+    c1.metric("🚚 Viajes",formato_entero(total_viajes)); c2.metric("📦 Bultos",formato_entero(total_bultos)); c3.metric("💵 Valor empacado",formato_clp(total_valor)); c4.metric("🧾 Flete",formato_clp(total_flete)); c5.metric("📊 CxQ global",f"{cxq:.2%}" if total_valor>0 else "Pendiente"); c6.metric("🔗 Cobertura",f"{cobertura:.1%}")
 
-        proveedores = sorted(f["Proveedor"].dropna().astype(str).unique())
-        proveedor_sel = st.multiselect(
-            "Proveedor", proveedores, key="cps_proveedor"
-        )
+    st.subheader("📋 Conciliación de fuentes de flete")
+    rf=f.groupby("Origen Flete",as_index=False).agg(Viajes=("Nro carga","count"),Flete=("Valor Flete","sum"))
+    rf["Viajes"]=rf["Viajes"].map(formato_entero); rf["Flete"]=rf["Flete"].map(formato_clp)
+    st.data_editor(rf,use_container_width=True,disabled=True,hide_index=True,key="cps_fuentes_flete")
 
-        estado_sel = st.selectbox(
-            "Cruce de flete",
-            ["Todos", "Flete cruzado", "Sin costo encontrado"],
-            key="cps_estado",
-        )
-
-        busqueda = st.text_input(
-            "Buscar carga o bitácora", key="cps_busqueda"
-        ).strip()
-
-        if destino_sel:
-            f = f[f["Destino"].isin(destino_sel)]
-        if proveedor_sel:
-            f = f[f["Proveedor"].isin(proveedor_sel)]
-        if estado_sel != "Todos":
-            f = f[f["Estado cruce"] == estado_sel]
-        if busqueda:
-            q = busqueda.lower()
-            f = f[
-                f["Nro carga"].str.lower().str.contains(q, na=False, regex=False)
-                | f["Bitácora"].str.lower().str.contains(q, na=False, regex=False)
-            ]
-
-    f = f.sort_values(
-        ["Fecha despacho dt", "Destino", "Bitácora", "Nro carga"],
-        ascending=[True, True, True, True],
-    )
-
-    # KPIs ponderados
-    total_viajes = len(f)
-    total_valor = f["Valor empacado"].sum()
-    total_flete = f["Valor Flete"].sum()
-    total_bultos = f["Bultos empacados"].sum()
-    total_con_flete = int((f["Valor Flete"] > 0).sum())
-    cxq_global = total_flete / total_valor if total_valor > 0 else 0
-    cobertura = total_con_flete / total_viajes if total_viajes else 0
-
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("🚚 Viajes", formato_entero(total_viajes))
-    c2.metric("📦 Bultos empacados", formato_entero(total_bultos))
-    c3.metric("💵 Valor empacado", formato_clp(total_valor))
-    c4.metric("🧾 Flete", formato_clp(total_flete))
-    c5.metric(
-        "📊 CxQ global",
-        f"{cxq_global:.2%}" if total_valor > 0 else "Pendiente",
-    )
-    c6.metric("🔗 Cobertura flete", f"{cobertura:.1%}")
-
-    st.divider()
-
-    # Resumen por destino, con separador de miles.
-    df_dest = resumen_destino(f)
+    rd=resumen_destino(f)
     st.subheader("📋 Resumen por destino")
-    if not df_dest.empty:
-        tabla_dest = df_dest.copy()
-        tabla_dest["Viajes"] = tabla_dest["Viajes"].map(formato_entero)
-        tabla_dest["Bultos"] = tabla_dest["Bultos"].map(formato_entero)
-        tabla_dest["Flete"] = tabla_dest["Flete"].map(formato_clp)
-        tabla_dest["Valor empacado"] = tabla_dest["Valor_empacado"].map(formato_clp)
-        tabla_dest["CxQ %"] = tabla_dest["CxQ"].map(lambda x: f"{x:.2%}")
-        tabla_dest["Cobertura flete %"] = tabla_dest["Cobertura flete %"].map(
-            lambda x: f"{x:.1f}%"
-        )
+    vista=rd.copy(); vista["Viajes"]=vista["Viajes"].map(formato_entero); vista["Bultos"]=vista["Bultos"].map(formato_entero); vista["Flete"]=vista["Flete"].map(formato_clp); vista["Valor empacado"]=vista["Valor_empacado"].map(formato_clp); vista["CxQ %"]=vista["CxQ"].map(lambda x:f"{x:.2%}"); vista["Cobertura flete %"]=vista["Cobertura flete %"].map(lambda x:f"{x:.1f}%")
+    st.data_editor(vista[["Destino","Viajes","Bultos","Flete","Valor empacado","CxQ %","Cobertura flete %"]],use_container_width=True,disabled=True,height=420,key="cps_resumen_destino")
 
-        st.data_editor(
-            tabla_dest[
-                [
-                    "Destino", "Viajes", "Bultos", "Flete",
-                    "Valor empacado", "CxQ %", "Cobertura flete %",
-                ]
-            ],
-            use_container_width=True,
-            disabled=True,
-            height=420,
-            key="cps_resumen_destino",
-        )
-
-    # Alertas
     st.subheader("🚨 Alertas automáticas")
-    sin_flete = f[f["Valor Flete"] <= 0]
-    sin_valor = f[f["Valor empacado"] <= 0]
-    diferencia = f[f["Diferencia bultos"] != 0]
-
-    if sin_flete.empty and sin_valor.empty and diferencia.empty:
-        st.success("✅ Todos los viajes visibles están conciliados.")
+    sf=f[f["Valor Flete"]<=0]; sv=f[f["Valor empacado"]<=0]; db=f[f["Diferencia bultos"]!=0]
+    if sf.empty and sv.empty and db.empty: st.success("✅ Todos los viajes visibles están conciliados.")
     else:
-        if not sin_flete.empty:
-            st.error(
-                f"🔴 {formato_entero(len(sin_flete))} viaje(s) sin costo de flete."
-            )
-        if not sin_valor.empty:
-            st.warning(
-                f"🟠 {formato_entero(len(sin_valor))} viaje(s) sin valor empacado."
-            )
-        if not diferencia.empty:
-            st.warning(
-                f"🟠 {formato_entero(len(diferencia))} viaje(s) con diferencia "
-                "entre bultos despachados y empacados."
-            )
+        if not sf.empty: st.error(f"🔴 {formato_entero(len(sf))} viaje(s) sin costo de flete.")
+        if not sv.empty: st.warning(f"🟠 {formato_entero(len(sv))} viaje(s) sin valor empacado.")
+        if not db.empty: st.warning(f"🟠 {formato_entero(len(db))} viaje(s) con diferencia de bultos.")
 
-    # Ranking
-    st.subheader("🏆 Ranking automático")
-    col_r1, col_r2 = st.columns(2)
-    with col_r1:
-        st.markdown("### 🔺 Top 5 mayor CxQ")
-        top_cxq = df_dest[df_dest["Valor_empacado"] > 0].head(5).copy()
-        top_cxq["CxQ"] = top_cxq["CxQ"].map(lambda x: f"{x:.2%}")
-        top_cxq["Viajes"] = top_cxq["Viajes"].map(formato_entero)
-        st.data_editor(
-            top_cxq[["Destino", "Viajes", "CxQ"]],
-            use_container_width=True,
-            disabled=True,
-            height=220,
-            key="cps_ranking_cxq",
-        )
-
-    with col_r2:
-        st.markdown("### 💵 Top 5 mayor flete")
-        top_flete = df_dest.sort_values("Flete", ascending=False).head(5).copy()
-        top_flete["Flete"] = top_flete["Flete"].map(formato_clp)
-        top_flete["Viajes"] = top_flete["Viajes"].map(formato_entero)
-        st.data_editor(
-            top_flete[["Destino", "Viajes", "Flete"]],
-            use_container_width=True,
-            disabled=True,
-            height=220,
-            key="cps_ranking_flete",
-        )
-
-    # Graficos mantienen datos numericos.
-    col_g1, col_g2 = st.columns(2)
-    with col_g1:
+    col1,col2=st.columns(2)
+    with col1:
         st.subheader("📊 CxQ por destino")
-        graf_dest = df_dest[df_dest["Valor_empacado"] > 0].copy()
-        if not graf_dest.empty:
-            fig_dest = px.bar(
-                graf_dest.sort_values("CxQ", ascending=True),
-                x="CxQ",
-                y="Destino",
-                orientation="h",
-                text_auto=".2%",
-                color="CxQ",
-                color_continuous_scale="RdYlGn_r",
-            )
-            fig_dest.update_xaxes(tickformat=".1%")
-            fig_dest.update_layout(
-                height=560,
-                xaxis_title="Costo por Servir",
-                yaxis_title="Destino",
-                coloraxis_showscale=False,
-            )
-            st.plotly_chart(fig_dest, use_container_width=True)
-
-    with col_g2:
+        gd=rd[rd["Valor_empacado"]>0]
+        if not gd.empty:
+            fig=px.bar(gd.sort_values("CxQ"),x="CxQ",y="Destino",orientation="h",text_auto=".2%",color="CxQ",color_continuous_scale="RdYlGn_r")
+            fig.update_xaxes(tickformat=".1%"); fig.update_layout(height=560,coloraxis_showscale=False); st.plotly_chart(fig,use_container_width=True)
+    with col2:
         st.subheader("💵 Flete por proveedor")
-        df_prov = resumen_proveedor(f)
-        if not df_prov.empty:
-            fig_prov = px.bar(
-                df_prov.sort_values("Flete", ascending=True),
-                x="Flete",
-                y="Proveedor",
-                orientation="h",
-                color="CxQ",
-                color_continuous_scale="Tealgrn",
-            )
-            fig_prov.update_layout(
-                height=560,
-                xaxis_title="Flete CLP",
-                yaxis_title="Proveedor",
-                coloraxis_colorbar_title="CxQ",
-            )
-            fig_prov.update_xaxes(tickformat=",.0f", separatethousands=True)
-            st.plotly_chart(fig_prov, use_container_width=True)
+        rp=resumen_proveedor(f)
+        if not rp.empty:
+            fig=px.bar(rp.sort_values("Flete"),x="Flete",y="Proveedor",orientation="h",color="CxQ",color_continuous_scale="Tealgrn")
+            fig.update_xaxes(tickformat=",.0f",separatethousands=True); fig.update_layout(height=560); st.plotly_chart(fig,use_container_width=True)
 
-    # Detalle con miles separados por puntos.
     st.subheader("📄 Detalle de viajes")
-    detalle = f.copy()
-    detalle["Valor Flete"] = detalle["Valor Flete"].map(formato_clp)
-    detalle["Valor despachado"] = detalle["Valor despachado"].map(formato_clp)
-    detalle["Valor empacado"] = detalle["Valor empacado"].map(formato_clp)
-    detalle["Bultos despachados"] = detalle["Bultos despachados"].map(formato_entero)
-    detalle["Bultos empacados"] = detalle["Bultos empacados"].map(formato_entero)
-    detalle["CxQ"] = detalle["CxQ"].map(
-        lambda x: f"{x:.2%}" if x > 0 else "Pendiente"
-    )
-
-    columnas_detalle = [
-        "Fecha de despacho", "Hora de despacho", "Destino", "Proveedor",
-        "Valor Flete", "Bultos despachados", "Valor despachado",
-        "Bultos empacados", "Valor empacado", "CxQ", "Bitácora",
-        "Nro carga", "Origen Flete", "Estado cruce",
-    ]
-
-    st.data_editor(
-        detalle[columnas_detalle],
-        use_container_width=True,
-        height=550,
-        disabled=True,
-        key="cps_detalle_final",
-        column_config={
-            "Nro carga": st.column_config.TextColumn("Nro carga", width="large"),
-            "Proveedor": st.column_config.TextColumn("Proveedor", width="large"),
-            "Origen Flete": st.column_config.TextColumn("Cruce utilizado"),
-        },
-    )
-
-    # Descarga conserva valores numericos, no los textos formateados.
-    st.download_button(
-        "⬇️ Descargar CSV filtrado",
-        data=f.drop(columns=["Bitacora clave"], errors="ignore")
-        .to_csv(index=False)
-        .encode("utf-8-sig"),
-        file_name="Costo_por_Servir_T1_filtrado.csv",
-        mime="text/csv",
-        key="cps_descarga",
-    )
-
+    det=f.copy(); det["Valor Flete"]=det["Valor Flete"].map(formato_clp); det["Valor despachado"]=det["Valor despachado"].map(formato_clp); det["Valor empacado"]=det["Valor empacado"].map(formato_clp); det["Bultos despachados"]=det["Bultos despachados"].map(formato_entero); det["Bultos empacados"]=det["Bultos empacados"].map(formato_entero); det["CxQ"]=det["CxQ"].map(lambda x:f"{x:.2%}" if x>0 else "Pendiente")
+    cols=["Fecha de despacho","Hora de despacho","Destino","Proveedor","Valor Flete","Bultos despachados","Valor despachado","Bultos empacados","Valor empacado","CxQ","Bitácora","Nro carga","Origen Flete","Estado cruce"]
+    st.data_editor(det[cols],use_container_width=True,height=550,disabled=True,key="cps_detalle_final")
+    st.download_button("⬇️ Descargar CSV filtrado",data=f.drop(columns=["Bitacora clave","Proveedor clave","Destino clave"],errors="ignore").to_csv(index=False).encode("utf-8-sig"),file_name="Costo_por_Servir_T1_filtrado.csv",mime="text/csv",key="cps_descarga")
 
 if __name__ == "__main__":
     main()
