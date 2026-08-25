@@ -196,7 +196,7 @@ def cargar_costos_flete(repo):
     try:
         c_carga = buscar_columna(
             bruto,
-            ["Nro de Carga", "Nro carga", "Numero de Carga", "Numero carga"],
+            ["Nro de Carga", "Nro carga", "Nro Carga", "Numero de Carga", "Numero carga"],
             obligatoria=False,
         )
         c_bitacora = buscar_columna(
