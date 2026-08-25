@@ -16,7 +16,7 @@ GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
 GITHUB_FOLDER = "data"
 ARCHIVO_COSTO_SERVIR = "Costo_por_Servir_T1.csv"
-ARCHIVO_COSTO_FLETE = "viajes primaria.csv"
+ARCHIVO_COSTO_FLETE = "viajes_primaria.csv"
 ZONA_HORARIA = "America/Santiago"
 
 
@@ -229,7 +229,7 @@ def cargar_costos_flete(repo):
 
     # Se descartan filas sin costo positivo. Si hay duplicados idénticos,
     # se conserva la ultima aparicion para evitar multiplicar el flete.
-    costos = costos[costos["COSTO"] > 0].copy()
+    costos = costos[costos["COSTOS"] > 0].copy()
     return costos
 
 
@@ -411,7 +411,7 @@ def main():
     st.title("💰 Costo por Servir T1")
     st.caption(
         "Base: /data/Costo_por_Servir_T1.csv · "
-        "Flete: /data/COSTO FLETE T1.csv · "
+        "Flete: /data/viajes_primaria.csv · "
         "Prioridad Nro de Carga, respaldo Bitacora"
     )
 
