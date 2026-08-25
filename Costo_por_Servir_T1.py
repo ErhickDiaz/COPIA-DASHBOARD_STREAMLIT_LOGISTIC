@@ -17,7 +17,7 @@ REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
 GITHUB_FOLDER = "data"
 ARCHIVO_COSTO_SERVIR = "Costo_por_Servir_T1.csv"
 ARCHIVO_COSTO_FLETE = "viajes primaria.csv"
-ARCHIVO_FLETE_ACTUAL = "flete_actual.csv"
+ARCHIVO_FLETE_ACTUAL = "fletes_actuales.csv"
 ZONA_HORARIA = "America/Santiago"
 
 # =========================================================
