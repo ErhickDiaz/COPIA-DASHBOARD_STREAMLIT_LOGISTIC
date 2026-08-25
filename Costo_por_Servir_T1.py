@@ -206,7 +206,7 @@ def cargar_costos_flete(repo):
         )
         c_costo = buscar_columna(
             bruto,
-            ["COSTO", "Costo Flete", "Valor Flete", "Flete"],
+            ["COSTO", "COSTOS", "Costo Flete", "Valor Flete", "Flete"],
         )
     except KeyError as e:
         st.error(f"Error en {ARCHIVO_COSTO_FLETE}: {e}")
