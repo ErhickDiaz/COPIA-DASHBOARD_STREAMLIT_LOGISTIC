@@ -16,7 +16,7 @@ GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]
 REPO_NAME = "ErhickDiaz/COPIA-DASHBOARD_STREAMLIT_LOGISTIC"
 GITHUB_FOLDER = "data"
 ARCHIVO_COSTO_SERVIR = "Costo_por_Servir_T1.csv"
-ARCHIVO_COSTO_FLETE = "viajes primaria.csv"
+ARCHIVO_COSTO_FLETE = "viajes_primaria.csv"
 ARCHIVO_FLETE_ACTUAL = "fletes_actuales.csv"
 ZONA_HORARIA = "America/Santiago"
 
@@ -214,11 +214,11 @@ def aplicar_costos_flete(df, viajes, actual):
     out["Valor Flete"] = por_carga
     out["Origen Flete"] = "Sin coincidencia"
     m1 = por_carga.notna() & por_carga.gt(0)
-    out.loc[m1, "Origen Flete"] = "viajes primaria - Nro Carga"
+    out.loc[m1, "Origen Flete"] = "viajes_primaria - Nro Carga"
 
     m2 = (out["Valor Flete"].isna() | out["Valor Flete"].le(0)) & por_bit.notna() & por_bit.gt(0)
     out.loc[m2, "Valor Flete"] = por_bit.loc[m2]
-    out.loc[m2, "Origen Flete"] = "viajes primaria - Bitacora"
+    out.loc[m2, "Origen Flete"] = "viajes_primaria - Bitacora"
 
     m3 = (out["Valor Flete"].isna() | out["Valor Flete"].le(0)) & por_actual.notna() & por_actual.gt(0)
     out.loc[m3, "Valor Flete"] = por_actual.loc[m3]
