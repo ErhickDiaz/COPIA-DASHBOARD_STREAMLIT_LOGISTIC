@@ -140,7 +140,7 @@ def calcular_semana_bimbo(fecha):
     return f"{anio}-S{str(((fecha-primer_jueves).days // 7)+1).zfill(2)}"
 
 # =========================================================
-# FUENTE 1: VIAJES PRIMARIA
+# FUENTE 1: VIAJES_PRIMARIA
 # =========================================================
 def cargar_costos_flete(repo):
     bruto = leer_csv_github(repo, ARCHIVO_COSTO_FLETE)
