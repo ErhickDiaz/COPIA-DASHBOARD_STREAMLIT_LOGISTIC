@@ -307,9 +307,7 @@ def resumen_proveedor(df):
 def main():
     st.session_state["ultima_actualizacion_real"] = datetime.now(pytz.timezone(ZONA_HORARIA))
     st.title("💰 Costo por Servir T1")
-    st.warning(
-    f"Archivo histórico: {ARCHIVO_COSTO_FLETE}"
-    )
+    st.warning(f"Archivo histórico: {ARCHIVO_COSTO_FLETE}")
 
     st.caption(f"Base: /data/{ARCHIVO_COSTO_SERVIR} · Flete histórico: /data/{ARCHIVO_COSTO_FLETE} · Respaldo: /data/{ARCHIVO_FLETE_ACTUAL} · Prioridad: Nro Carga, Bitácora y tarifa actual")
     if st.sidebar.button("🔄 Actualizar datos", key="actualizar_costo_servir"):
