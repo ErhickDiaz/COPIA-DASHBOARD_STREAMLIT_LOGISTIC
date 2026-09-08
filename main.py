@@ -87,13 +87,7 @@ def main():
     elif st.session_state.selection == "MaxCube Primaria":
         maxcube_primaria_main()
     elif st.session_state.selection == "Caja seca 3D":
-
-        st.title("🚨 PRUEBA DIRECTA")
-
-        st.success("El menú llegó hasta aquí")
-
-        st.write(st.session_state.selection)
-
+        Caja_Seca_3D_main()
     elif st.session_state.selection == "Costo por Servir Primaria":
         Costo_por_Servir_T1_main()
 
