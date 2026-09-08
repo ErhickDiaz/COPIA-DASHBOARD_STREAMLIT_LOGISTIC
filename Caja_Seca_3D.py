@@ -37,7 +37,7 @@ def _limpiar_valor(valor):
 
 def _obtener_archivo_entrada():
     if RUTA_DATA.exists():
-        csvs = sorted(RUTA_DATA.glob("*.csv"))
+        csvs = sorted(RUTA_DATA.glob("oblpnCLIDtmpojn6m9fp.csv"))
         if len(csvs) == 1:
             return csvs[0]
         if len(csvs) > 1:
