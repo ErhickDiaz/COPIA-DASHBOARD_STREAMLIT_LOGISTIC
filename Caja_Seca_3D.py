@@ -138,7 +138,7 @@ def main():
 
     # ---------------- Dimensiones (editables) ----------------
     st.sidebar.header("Contenedor (m)")
-    largo = st.sidebar.number_input("Largo", value=13.0, step=0.1)
+    largo = st.sidebar.number_input("Largo", value=20.0, step=0.1)
     ancho = st.sidebar.number_input("Ancho", value=2.5, step=0.1)
     alto = st.sidebar.number_input("Alto", value=2.6, step=0.1)
 
