@@ -1,6 +1,9 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
+import streamlit as st
+
+st.write("✅ Caja_Seca_3D.py cargado")
 
 # =========================================================
 # MODELO 3D CAJA SECA T1
