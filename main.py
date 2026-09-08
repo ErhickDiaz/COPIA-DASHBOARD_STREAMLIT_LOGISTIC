@@ -86,7 +86,7 @@ def main():
         logistica_inversa_main()
     elif st.session_state.selection == "MaxCube Primaria":
         maxcube_primaria_main()
-    elif opcion == "🚛 Caja seca 3D":
+    elif st.session_state.selection == "🚛 Caja seca 3D":
         Caja_Seca_3D_main()
     elif st.session_state.selection == "Costo por Servir Primaria":
         Costo_por_Servir_T1_main()
