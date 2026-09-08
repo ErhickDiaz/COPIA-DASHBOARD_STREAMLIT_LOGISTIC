@@ -5,6 +5,7 @@ from Monitoreo_Flota_Primaria import main as flota_primaria_main
 from logistica_inversa import main as logistica_inversa_main
 from MaxCube_Primaria import main as maxcube_primaria_main
 from Costo_por_Servir_T1 import main as Costo_por_Servir_T1_main
+from Caja_Seca_3D import main as Caja_Seca_3D_main
 from streamlit_autorefresh import st_autorefresh
 from datetime import datetime
 import time
@@ -49,6 +50,7 @@ def main():
         "Monitoreo Flota Primaria": "🚚",
         "Logistica Inversa": "♻️",
         "MaxCube Primaria": "📦",
+        "Caja seca 3D": "🚛",
         "Costo por Servir Primaria": "💰"
     }
 
@@ -84,6 +86,8 @@ def main():
         logistica_inversa_main()
     elif st.session_state.selection == "MaxCube Primaria":
         maxcube_primaria_main()
+    elif opcion == "🚛 Caja seca 3D":
+        Caja_Seca_3D_main()
     elif st.session_state.selection == "Costo por Servir Primaria":
         Costo_por_Servir_T1_main()
 
