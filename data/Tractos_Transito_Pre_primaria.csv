@@ -1,10 +1,5 @@
 Desde,Hasta,Estado,LPNs Env,Bult. Env,Hora de salida
-Barcel,CEDIS,En transito,24,1426,2026-09-29 21:25:29
 P. Chillán,CEDIS,En transito,24,1440,2026-09-30 09:45:15
-P. Ideal,CEDIS,En transito,28,700,2026-09-30 12:24:45
-NB,CEDIS,En transito,30,2131,2026-09-30 13:48:43
-Barcel,CEDIS,En transito,24,1375,2026-09-30 14:42:59
-P. Ideal,CEDIS,En transito,30,750,2026-09-30 14:51:53
 P. Ideal,CEDIS,En transito,12,300,2026-10-01 08:32:54
 P. Chillán,CEDIS,En transito,24,1440,2026-10-01 08:36:36
 P. Ideal,CEDIS,En transito,18,450,2026-10-01 08:49:11
@@ -17,3 +12,4 @@ P. Ideal,CEDIS,En transito,22,1290,2026-10-01 12:32:52
 P. Ideal,CEDIS,En transito,28,700,2026-10-01 12:41:09
 P. Chillán,CEDIS,En transito,24,1440,2026-10-01 12:55:13
 NB,CEDIS,En transito,28,2155,2026-10-01 13:03:53
+NB,CEDIS,En transito,30,2707,2026-10-01 13:52:06
